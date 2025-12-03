@@ -101,12 +101,32 @@ jobs:
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.4
+        continue-on-error: true
 
-      - name: Build (release)
+      - name: Check sccache availability
+        id: check_sccache
+        shell: bash
+        run: |
+          if command -v sccache >/dev/null 2>&1; then
+            echo "sccache_available=true" >> $GITHUB_OUTPUT
+            echo "SCCACHE_AVAILABLE=true" >> $GITHUB_ENV
+          else
+            echo "sccache_available=false" >> $GITHUB_OUTPUT
+            echo "SCCACHE_AVAILABLE=false" >> $GITHUB_ENV
+          fi
+
+      - name: Build (release) with sccache
+        if: ${{ steps.check_sccache.outputs.sccache_available == 'true' }}
         env:
           SCCACHE_GHA_ENABLED: "true"
           RUSTC_WRAPPER: "sccache"
         run: cargo build --release
+
+      - name: Build (release) fallback
+        if: ${{ steps.check_sccache.outputs.sccache_available != 'true' }}
+        run: |
+          echo "sccache unavailable; building without sccache"
+          cargo build --release
 
       - name: Package (Linux)
         if: runner.os == 'Linux'
