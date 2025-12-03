@@ -16,7 +16,7 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
       CARGO_INCREMENTAL: 0
-      # REMOVED: "-C target-cpu=native" to ensure the app runs on all user computers, not just the CI runner.
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,219 +24,127 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      # RECOMMENDED: Use Swatinem/rust-cache instead of manual caching or sccache
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
 
+      # --- LINUX SETUP ---
       - name: Install dependencies (Linux)
-        if: runner.os == 'Linux'
+        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y qt6-base-dev qt6-declarative-dev cmake ninja-build pkg-config
-          # Ensure qmake/rcc executables are exported for `cxx-qt-build`
-          if command -v qmake-qt6 >/dev/null 2>&1; then echo "QT_QMAKE_EXECUTABLE=$(which qmake-qt6)" >> $GITHUB_ENV; elif command -v qmake >/dev/null 2>&1; then echo "QT_QMAKE_EXECUTABLE=$(which qmake)" >> $GITHUB_ENV; fi
-          if command -v rcc >/dev/null 2>&1; then echo "QT_RCC_EXECUTABLE=$(which rcc)" >> $GITHUB_ENV; elif command -v rcc-qt6 >/dev/null 2>&1; then echo "QT_RCC_EXECUTABLE=$(which rcc-qt6)" >> $GITHUB_ENV; fi
+          echo "QT_QMAKE_EXECUTABLE=$(which qmake6 || which qmake)" >> $GITHUB_ENV
 
+      # --- WINDOWS SETUP ---
       - name: Install Qt (Windows)
-        if: runner.os == 'Windows'
+        if: matrix.os == 'windows-latest'
         uses: jurplel/install-qt-action@v3
         with:
           version: '6.6.3'
           arch: 'win64_msvc2019_64'
-
-      - name: Set QT env variables (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          # Prefer a command lookup first (should be in PATH after setup-qt), otherwise attempt to probe common install locations
-          $qmake = (Get-Command qmake.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source) -ne $null ? (Get-Command qmake.exe -ErrorAction SilentlyContinue).Source : $null
-          if (-not $qmake) {
-            # Common locations where setup-qt installs may put qmake
-            $possible = @('C:\Qt', 'C:\HostedToolCache\windows\Qt')
-            foreach ($p in $possible) {
-              $found = Get-ChildItem $p -Directory -ErrorAction SilentlyContinue | ForEach-Object { Get-ChildItem $_.FullName -Directory -ErrorAction SilentlyContinue } | ForEach-Object { Get-ChildItem ($_ | Select-Object -ExpandProperty FullName) -Filter 'qmake.exe' -Recurse -ErrorAction SilentlyContinue } | Select-Object -First 1
-              if ($found) { $qmake = $found.FullName; break }
-            }
-          }
-          $rcc = (Get-Command rcc.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source) -ne $null ? (Get-Command rcc.exe -ErrorAction SilentlyContinue).Source : $null
-          if (-not $rcc) {
-            $rcc = (Get-Command qt6-rcc.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source) -ne $null ? (Get-Command qt6-rcc.exe -ErrorAction SilentlyContinue).Source : $null
-          }
-          if (-not $qmake -or -not $rcc) {
-            Write-Host "Warning: qmake or rcc not found in PATH. qmake=$qmake rcc=$rcc"
-          }
-          # Resolve bin directory and set env vars used by build.rs (cxx-qt-build)
-          if ($qmake) {
-            $qtBin = Split-Path -Path $qmake -Parent
-            Add-Content -Path $env:GITHUB_ENV -Value "QT_BIN=$qtBin"
-            Add-Content -Path $env:GITHUB_ENV -Value "QT_QMAKE_EXECUTABLE=$qmake"
-          }
-          if ($rcc) { Add-Content -Path $env:GITHUB_ENV -Value "QT_RCC_EXECUTABLE=$rcc" }
-          if ($qtBin) { $env:PATH = "$qtBin;$env:PATH" }
+          # This action automatically adds Qt bin to PATH and sets env vars
 
       - name: Setup MSVC (Windows)
-        if: runner.os == 'Windows'
+        if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Ensure build tools (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          # Visual Studio & MSVC are preinstalled on windows-latest; make sure cl is available
-          cl.exe /?
-
-      - name: Set QT env variables (Linux fallback)
-        if: runner.os == 'Linux'
-        run: |
-          # Debug output of QT variables
-          echo "QT_QMAKE_EXECUTABLE=$QT_QMAKE_EXECUTABLE"
-          echo "QT_RCC_EXECUTABLE=$QT_RCC_EXECUTABLE"
-
+      # --- BUILD ---
       - name: Build (release)
         run: cargo build --release
 
+      # --- PACKAGE LINUX ---
       - name: Package (Linux)
-        if: runner.os == 'Linux'
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          # Install tools for creating self-extracting archive (pixz for parallel xz)
           sudo apt-get install -y p7zip-full upx-ucl pixz
-
+          
           mkdir -p artifact
           cp target/release/supervtf artifact/
-          # Include QML + media resources (app expects them at runtime)
           cp -r qml media resources.qrc artifact/ || true
 
-          # Compress the binary with UPX (strongest settings)
-          upx --best --lzma artifact/supervtf || echo "UPX compression skipped"
+          # Safe to UPX binary on Linux
+          upx --best --lzma artifact/supervtf || echo "UPX skipped"
 
-          # Create a self-extracting shell script that auto-runs the app
-          cd artifact
-          tar -cf ../payload.tar *
-          cd ..
-          # Use pixz for parallel compression (much faster on multi-core runners)
+          cd artifact && tar -cf ../payload.tar * && cd ..
           pixz -9 payload.tar payload.tar.xz
 
-          # Create the self-extracting script (using printf to avoid heredoc issues)
           printf '%s\n' '#!/bin/bash' '# SuperVTF Self-Extracting Launcher' 'TMPDIR=$(mktemp -d /tmp/supervtf.XXXXXX)' 'ARCHIVE_START=$(awk '"'"'/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }'"'"' "$0")' 'tail -n+$ARCHIVE_START "$0" | xz -d | tar -xf - -C "$TMPDIR"' 'cd "$TMPDIR"' './supervtf "$@"' 'EXIT_CODE=$?' 'cd /' 'rm -rf "$TMPDIR"' 'exit $EXIT_CODE' '__ARCHIVE_BELOW__' > supervtf-launcher.sh
-
-          # Append the compressed archive to the script
           cat payload.tar.xz >> supervtf-launcher.sh
           chmod +x supervtf-launcher.sh
           mv supervtf-launcher.sh supervtf-linux
 
+      # --- PACKAGE WINDOWS (FIXED) ---
       - name: Package (Windows)
-        if: runner.os == 'Windows'
+        if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          # Install UPX for compression
-          choco install upx -y
-
-          $exe = "target\release\supervtf.exe"
-          $QtBin = $env:QT_BIN
-          if (-not $QtBin -or -not (Test-Path $QtBin)) {
-            $qmakePath = (Get-Command qmake.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source) -ne $null ? (Get-Command qmake.exe -ErrorAction SilentlyContinue).Source : $null
-            if ($qmakePath) { $QtBin = Split-Path -Path $qmakePath -Parent }
-          }
-          if (-not (Test-Path $exe)) { throw "Executable not found: $exe" }
+          # 1. Install Tools
+          choco install upx 7zip -y
           
-          # Use windeployqt to gather required Qt DLLs
-          $windeploy = (Get-Command windeployqt.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source) -ne $null ? (Get-Command windeployqt.exe -ErrorAction SilentlyContinue).Source : "$QtBin\windeployqt.exe"
-          if (-not (Test-Path $windeploy)) { 
-            Write-Host "windeployqt not found: $windeploy" 
-          } else { 
-            # Explicitly deploy the 'platforms' plugin and be verbose to help debug
-            # Use an explicit verbose level so windeployqt doesn't treat the EXE as the verbose param
-            # Added --qmldir qml so windeployqt scans imports and copies QtQuick/Controls modules
-            & $windeploy --dir artifact --qmldir qml --plugins platforms --no-translations --no-compiler-runtime --no-system-d3d-compiler --no-opengl-sw --verbose=1 $exe 
-          }
+          # 2. Prepare Directory
+          $artifactDir = "artifact"
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
           
-          # Copy the main executable (ensure artifact dir exists)
-          New-Item -ItemType Directory -Force -Path artifact | Out-Null
-          $exeAbs = Resolve-Path -LiteralPath $exe -ErrorAction SilentlyContinue
-          if ($exeAbs) { Copy-Item $exeAbs -Destination artifact -Force } else { Copy-Item $exe -Destination artifact -Force }
+          $exeSource = "target\release\supervtf.exe"
+          if (-not (Test-Path $exeSource)) { throw "Executable not found at $exeSource" }
+          Copy-Item $exeSource -Destination $artifactDir
           
-          # Remove heavy files if they exist (software rasterizer is often 20MB+)
-          if (Test-Path "artifact\opengl32sw.dll") { Remove-Item "artifact\opengl32sw.dll" }
-          
-          # If windeployqt didn't copy the 'platforms' plugin, try to copy it directly
-          # Work with an artifact path even if the folder wasn't created by windeployqt
-          $artifactPath = Join-Path (Get-Location) "artifact"
-          $platformsDest = Join-Path $artifactPath "platforms"
-          if (-not (Test-Path (Join-Path $platformsDest 'qwindows.dll'))) {
-            # Try to find Qt's plugin path by probing $QT_BIN\..\plugins\platforms or common install locations
-            $possiblePaths = @(
-              (Join-Path $QtBin '..\plugins\platforms'),
-              "C:\Qt\6.6.3\msvc2019_64\plugins\platforms",
-              "C:\Qt\6.6.3\msvc2019_64\qtbase\plugins\platforms",
-              "C:\HostedToolCache\windows\Qt\6.6.3\msvc2019_64\plugins\platforms"
-            )
-            $foundPlatform = $null
-            foreach ($p in $possiblePaths) {
-              $pAbs = Resolve-Path -LiteralPath $p -ErrorAction SilentlyContinue
-              if ($pAbs -and (Test-Path (Join-Path $pAbs 'qwindows.dll'))) { $foundPlatform = $pAbs; break }
-            }
-            if ($foundPlatform) {
-              Write-Host "Copying platform plugin from $foundPlatform to artifact/platforms"
-              # Ensure parent dirs exist before copying
-              New-Item -ItemType Directory -Force -Path $artifactPath | Out-Null
-              New-Item -ItemType Directory -Force -Path $platformsDest | Out-Null
-              Copy-Item (Join-Path $foundPlatform 'qwindows.dll') -Destination $platformsDest -Force
-            } else {
-              Write-Host "Warning: platform plugin qwindows.dll not found in known Qt plugin paths: $possiblePaths"
-            }
-          }
+          # 3. Copy QML/Resources (Important for windeployqt to find imports)
+          if (Test-Path "qml") { Copy-Item "qml" -Destination $artifactDir -Recurse }
+          if (Test-Path "media") { Copy-Item "media" -Destination $artifactDir -Recurse }
 
-          # Verify we have 'platforms/qwindows.dll' in artifact; fail the job if not found
-          if (-not (Test-Path (Join-Path $platformsDest 'qwindows.dll'))) {
-            Write-Host "ERROR: artifact/platforms/qwindows.dll not found. The app will fail with 'Could not find the Qt platform plugin \"windows\"'"
-            throw "Missing Qt platform plugin: qwindows.dll"
-          }
+          # 4. Run Windeployqt
+          # Since install-qt-action puts Qt in PATH, we usually don't need full paths.
+          # However, to be safe, we use the env var it provides ($env:IQTA_TOOLS_ROOT is sometimes set, 
+          # but simply calling windeployqt usually works if the previous step succeeded).
+          Write-Host "Running windeployqt..."
+          windeployqt --dir $artifactDir --qmldir qml --no-translations --no-compiler-runtime --no-opengl-sw --release "$artifactDir\supervtf.exe"
 
-          # Compress EXE and DLLs with UPX
-          Get-ChildItem artifact -Include *.exe,*.dll -Recurse | ForEach-Object {
-            Write-Host "Compressing $($_.Name)..."
-            # Added --no-color to avoid parsing issues in some terminals, though not strictly necessary
-            upx --best --lzma --force $_.FullName
-          }
+          # 5. Clean up bloat
+          if (Test-Path "$artifactDir\opengl32sw.dll") { Remove-Item "$artifactDir\opengl32sw.dll" }
+          # Remove .pdb files if any copied
+          Get-ChildItem $artifactDir -Filter *.pdb -Recurse | Remove-Item
 
-          # Create SFX (Single Executable)
+          # 6. Verify Critical DLL (Sanity Check)
+          if (-not (Test-Path "$artifactDir\Qt6Core.dll")) { throw "Qt6Core.dll missing! Windeployqt failed." }
+          if (-not (Test-Path "$artifactDir\plugins\platforms\qwindows.dll")) { throw "qwindows.dll missing! Windeployqt failed." }
+
+          # 7. Compress ONLY the Executable (NEVER compress DLLs)
+          Write-Host "Compressing EXE..."
+          upx --best --lzma --force "$artifactDir\supervtf.exe"
+
+          # 8. Create SFX with 7-Zip
           $7zPath = "C:\Program Files\7-Zip\7z.exe"
           $sfxModule = "C:\Program Files\7-Zip\7z.sfx"
           
-          if (-not (Test-Path $7zPath)) { 
-            choco install 7zip -y
-            $7zPath = "C:\Program Files\7-Zip\7z.exe"
-            $sfxModule = "C:\Program Files\7-Zip\7z.sfx"
-          }
+          # Create archive of the artifact FOLDER contents
+          & $7zPath a -t7z -m0=lzma2 -mx=9 -mfb=273 -ms=on "payload.7z" ".\$artifactDir\*"
 
-          # Create the 7z archive (ULTRA compression)
-          & $7zPath a -t7z -m0=lzma2 -mx=9 -mfb=273 -ms=on -md=64m payload.7z ".\artifact\*"
-          
-          # Create SFX config for SILENT auto-extraction and run
+          # Create Config
+          # REMOVED InstallPath="C:\\tmp" to allow default temp behavior
           $configLines = @(
             ';!@Install@!UTF-8!',
-            'Title="SuperVTF"',       # Title doesn't matter if GUI disabled
-            'GUIMode="2"',            # FULLY silent, no windows, no progress bar
-            'InstallPath="C:\\tmp"',  # FORCE extraction path
-            'OverwriteMode="2"',      # Overwrite without asking (important for silent)
-            'RunProgram="supervtf.exe"', # Command to run after extraction
+            'Title="SuperVTF"',
+            'GUIMode="2"',            
+            'OverwriteMode="0"',      # 0=Overwrite all using temp names (safer for temp runs)
+            'RunProgram="supervtf.exe"',
             ';!@InstallEnd@!'
           )
           $configLines -join "`r`n" | Set-Content -Path config.txt -NoNewline
 
-          
-          # Combine to create the single EXE
+          # Merge
           cmd /c "copy /b `"$sfxModule`" + config.txt + payload.7z supervtf-portable.exe"
 
+      # --- UPLOADS ---
       - name: Upload artifact (Linux)
-        if: runner.os == 'Linux'
+        if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: supervtf-linux
           path: supervtf-linux
 
       - name: Upload artifact (Windows)
-        if: runner.os == 'Windows'
+        if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: supervtf-windows-portable
