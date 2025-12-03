@@ -145,18 +145,23 @@ jobs:
             Write-Host "windeployqt not found: $windeploy" 
           } else { 
             # Explicitly deploy the 'platforms' plugin and be verbose to help debug
+            # Use an explicit verbose level so windeployqt doesn't treat the EXE as the verbose param
             # Added --qmldir qml so windeployqt scans imports and copies QtQuick/Controls modules
-            & $windeploy --dir artifact --qmldir qml --plugins platforms --no-translations --no-compiler-runtime --no-system-d3d-compiler --no-opengl-sw --verbose $exe 
+            & $windeploy --dir artifact --qmldir qml --plugins platforms --no-translations --no-compiler-runtime --no-system-d3d-compiler --no-opengl-sw --verbose=1 $exe 
           }
           
-          # Copy the main executable
-          Copy-Item $exe -Destination artifact
+          # Copy the main executable (ensure artifact dir exists)
+          New-Item -ItemType Directory -Force -Path artifact | Out-Null
+          $exeAbs = Resolve-Path -LiteralPath $exe -ErrorAction SilentlyContinue
+          if ($exeAbs) { Copy-Item $exeAbs -Destination artifact -Force } else { Copy-Item $exe -Destination artifact -Force }
           
           # Remove heavy files if they exist (software rasterizer is often 20MB+)
           if (Test-Path "artifact\opengl32sw.dll") { Remove-Item "artifact\opengl32sw.dll" }
           
           # If windeployqt didn't copy the 'platforms' plugin, try to copy it directly
-          $platformsDest = Join-Path (Resolve-Path artifact) "platforms"
+          # Work with an artifact path even if the folder wasn't created by windeployqt
+          $artifactPath = Join-Path (Get-Location) "artifact"
+          $platformsDest = Join-Path $artifactPath "platforms"
           if (-not (Test-Path (Join-Path $platformsDest 'qwindows.dll'))) {
             # Try to find Qt's plugin path by probing $QT_BIN\..\plugins\platforms or common install locations
             $possiblePaths = @(
@@ -172,6 +177,8 @@ jobs:
             }
             if ($foundPlatform) {
               Write-Host "Copying platform plugin from $foundPlatform to artifact/platforms"
+              # Ensure parent dirs exist before copying
+              New-Item -ItemType Directory -Force -Path $artifactPath | Out-Null
               New-Item -ItemType Directory -Force -Path $platformsDest | Out-Null
               Copy-Item (Join-Path $foundPlatform 'qwindows.dll') -Destination $platformsDest -Force
             } else {
