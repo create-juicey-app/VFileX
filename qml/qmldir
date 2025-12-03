@@ -1,0 +1,10 @@
+module com.supervtf
+
+Main 1.0 Main.qml
+ParameterDelegate 1.0 ParameterDelegate.qml
+PreviewPane 1.0 PreviewPane.qml
+
+# Rust-backed types (registered via CXX-Qt)
+singleton SuperVtfApp 1.0
+MaterialModel 1.0
+TextureProvider 1.0
