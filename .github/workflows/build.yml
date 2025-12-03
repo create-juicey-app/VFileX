@@ -16,24 +16,17 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
       CARGO_INCREMENTAL: 0
-      RUSTFLAGS: "-C target-cpu=native"
+      # REMOVED: "-C target-cpu=native" to ensure the app runs on all user computers, not just the CI runner.
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Cache Cargo registry & target
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+
+      # RECOMMENDED: Use Swatinem/rust-cache instead of manual caching or sccache
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
 
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
@@ -99,34 +92,8 @@ jobs:
           echo "QT_QMAKE_EXECUTABLE=$QT_QMAKE_EXECUTABLE"
           echo "QT_RCC_EXECUTABLE=$QT_RCC_EXECUTABLE"
 
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.4
-        continue-on-error: true
-
-      - name: Check sccache availability
-        id: check_sccache
-        shell: bash
-        run: |
-          if command -v sccache >/dev/null 2>&1; then
-            echo "sccache_available=true" >> $GITHUB_OUTPUT
-            echo "SCCACHE_AVAILABLE=true" >> $GITHUB_ENV
-          else
-            echo "sccache_available=false" >> $GITHUB_OUTPUT
-            echo "SCCACHE_AVAILABLE=false" >> $GITHUB_ENV
-          fi
-
-      - name: Build (release) with sccache
-        if: ${{ steps.check_sccache.outputs.sccache_available == 'true' }}
-        env:
-          SCCACHE_GHA_ENABLED: "true"
-          RUSTC_WRAPPER: "sccache"
+      - name: Build (release)
         run: cargo build --release
-
-      - name: Build (release) fallback
-        if: ${{ steps.check_sccache.outputs.sccache_available != 'true' }}
-        run: |
-          echo "sccache unavailable; building without sccache"
-          cargo build --release
 
       - name: Package (Linux)
         if: runner.os == 'Linux'
@@ -191,30 +158,24 @@ jobs:
           # Compress EXE and DLLs with UPX
           Get-ChildItem artifact -Include *.exe,*.dll -Recurse | ForEach-Object {
             Write-Host "Compressing $($_.Name)..."
+            # Added --no-color to avoid parsing issues in some terminals, though not strictly necessary
             upx --best --lzma --force $_.FullName
           }
 
           # Create SFX (Single Executable)
-          # 1. Create 7z archive of the artifact folder content
-          # 2. Concatenate 7z SDX module + config + archive
-          
           $7zPath = "C:\Program Files\7-Zip\7z.exe"
           $sfxModule = "C:\Program Files\7-Zip\7z.sfx"
           
           if (-not (Test-Path $7zPath)) { 
-            # Fallback if 7-Zip not in standard location, try choco install
             choco install 7zip -y
             $7zPath = "C:\Program Files\7-Zip\7z.exe"
             $sfxModule = "C:\Program Files\7-Zip\7z.sfx"
           }
 
-          # Create the 7z archive (ULTRA compression - LZMA2 with maximum settings)
+          # Create the 7z archive (ULTRA compression)
           & $7zPath a -t7z -m0=lzma2 -mx=9 -mfb=273 -ms=on -md=64m payload.7z ".\artifact\*"
           
           # Create SFX config for SILENT auto-extraction and run
-          # GUIMode=2 means completely silent (no dialogs)
-          # InstallPath specifies temp extraction location  
-          # RunProgram runs the app after extraction
           $configLines = @(
             ';!@Install@!UTF-8!',
             'Title="SuperVTF"',
@@ -227,8 +188,6 @@ jobs:
           
           # Combine to create the single EXE
           cmd /c "copy /b `"$sfxModule`" + config.txt + payload.7z supervtf-portable.exe"
-          
-          # (File is already in current directory, ready for upload)
 
       - name: Upload artifact (Linux)
         if: runner.os == 'Linux'
