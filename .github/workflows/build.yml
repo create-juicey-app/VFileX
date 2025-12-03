@@ -10,29 +10,30 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
     env:
       CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: 0
+      RUSTFLAGS: "-C target-cpu=native"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Cache Cargo registry
+      - name: Cache Cargo registry & target
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          components: clippy, rustfmt
-          override: true
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
@@ -98,19 +99,43 @@ jobs:
           echo "QT_QMAKE_EXECUTABLE=$QT_QMAKE_EXECUTABLE"
           echo "QT_RCC_EXECUTABLE=$QT_RCC_EXECUTABLE"
 
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.4
+
       - name: Build (release)
-        run: |
-          # On Windows this uses MSVC toolchain; on Linux the system gcc toolchain
-          cargo build --release
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
+        run: cargo build --release
 
       - name: Package (Linux)
         if: runner.os == 'Linux'
         run: |
+          # Install tools for creating self-extracting archive (pixz for parallel xz)
+          sudo apt-get install -y p7zip-full upx-ucl pixz
+
           mkdir -p artifact
           cp target/release/supervtf artifact/
           # Include QML + media resources (app expects them at runtime)
           cp -r qml media resources.qrc artifact/ || true
-          tar -czf supervtf-linux.tar.gz -C artifact .
+
+          # Compress the binary with UPX (strongest settings)
+          upx --best --lzma artifact/supervtf || echo "UPX compression skipped"
+
+          # Create a self-extracting shell script that auto-runs the app
+          cd artifact
+          tar -cf ../payload.tar *
+          cd ..
+          # Use pixz for parallel compression (much faster on multi-core runners)
+          pixz -9 payload.tar payload.tar.xz
+
+          # Create the self-extracting script (using printf to avoid heredoc issues)
+          printf '%s\n' '#!/bin/bash' '# SuperVTF Self-Extracting Launcher' 'TMPDIR=$(mktemp -d /tmp/supervtf.XXXXXX)' 'ARCHIVE_START=$(awk '"'"'/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }'"'"' "$0")' 'tail -n+$ARCHIVE_START "$0" | xz -d | tar -xf - -C "$TMPDIR"' 'cd "$TMPDIR"' './supervtf "$@"' 'EXIT_CODE=$?' 'cd /' 'rm -rf "$TMPDIR"' 'exit $EXIT_CODE' '__ARCHIVE_BELOW__' > supervtf-launcher.sh
+
+          # Append the compressed archive to the script
+          cat payload.tar.xz >> supervtf-launcher.sh
+          chmod +x supervtf-launcher.sh
+          mv supervtf-launcher.sh supervtf-linux
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
@@ -163,20 +188,24 @@ jobs:
             $sfxModule = "C:\Program Files\7-Zip\7z.sfx"
           }
 
-          # Create the 7z archive (high compression)
-          & $7zPath a -mx9 -t7z payload.7z ".\artifact\*"
+          # Create the 7z archive (ULTRA compression - LZMA2 with maximum settings)
+          & $7zPath a -t7z -m0=lzma2 -mx=9 -mfb=273 -ms=on -md=64m payload.7z ".\artifact\*"
           
-          # Create SFX config
-          $config = @"
-          ;!@Install@!UTF-8!
-          Title="SuperVTF"
-          ExecuteFile="supervtf.exe"
-          ;!@InstallEnd@!
-          "@
-          Set-Content -Path config.txt -Value $config -Encoding UTF8
+          # Create SFX config for SILENT auto-extraction and run
+          # GUIMode=2 means completely silent (no dialogs)
+          # InstallPath specifies temp extraction location  
+          # RunProgram runs the app after extraction
+          $configLines = @(
+            ';!@Install@!UTF-8!',
+            'Title="SuperVTF"',
+            'GUIMode="2"',
+            'InstallPath="%TEMP%\SuperVTF"',
+            'RunProgram="supervtf.exe"',
+            ';!@InstallEnd@!'
+          )
+          $configLines -join "`r`n" | Set-Content -Path config.txt -NoNewline
           
           # Combine to create the single EXE
-          # cmd /c copy /b 7z.sfx + config.txt + payload.7z supervtf-portable.exe
           cmd /c "copy /b `"$sfxModule`" + config.txt + payload.7z supervtf-portable.exe"
           
           # (File is already in current directory, ready for upload)
@@ -186,7 +215,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: supervtf-linux
-          path: supervtf-linux.tar.gz
+          path: supervtf-linux
 
       - name: Upload artifact (Windows)
         if: runner.os == 'Windows'
