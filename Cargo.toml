@@ -32,3 +32,10 @@ cxx-qt-build = "0.7"
 name = "supervtf"
 path = "src/main.rs"
 
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+

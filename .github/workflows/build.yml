@@ -116,6 +116,9 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          # Install UPX for compression
+          choco install upx -y
+
           $exe = "target\release\supervtf.exe"
           $QtBin = $env:QT_BIN
           if (-not $QtBin -or -not (Test-Path $QtBin)) {
@@ -123,13 +126,61 @@ jobs:
             if ($qmakePath) { $QtBin = Split-Path -Path $qmakePath -Parent }
           }
           if (-not (Test-Path $exe)) { throw "Executable not found: $exe" }
-          # Use windeployqt (from the Qt bin dir) to gather required Qt DLLs and plugins in `artifact` directory
+          
+          # Use windeployqt to gather required Qt DLLs
           $windeploy = (Get-Command windeployqt.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source) -ne $null ? (Get-Command windeployqt.exe -ErrorAction SilentlyContinue).Source : "$QtBin\windeployqt.exe"
-          if (-not (Test-Path $windeploy)) { Write-Host "windeployqt not found: $windeploy" } else { & $windeploy --dir artifact $exe }
-          # Also copy the exe itself to artifact
+          if (-not (Test-Path $windeploy)) { 
+            Write-Host "windeployqt not found: $windeploy" 
+          } else { 
+            # Exclude translations and other extras to save space
+            # Added --qmldir qml so windeployqt scans imports and copies QtQuick/Controls modules
+            & $windeploy --dir artifact --qmldir qml --no-translations --no-compiler-runtime --no-system-d3d-compiler --no-opengl-sw $exe 
+          }
+          
+          # Copy the main executable
           Copy-Item $exe -Destination artifact
-          # Create zip for artifact upload
-          Compress-Archive -Path artifact\* -DestinationPath supervtf-windows.zip -Force
+          
+          # Remove heavy files if they exist (software rasterizer is often 20MB+)
+          if (Test-Path "artifact\opengl32sw.dll") { Remove-Item "artifact\opengl32sw.dll" }
+          
+          # Compress EXE and DLLs with UPX
+          Get-ChildItem artifact -Include *.exe,*.dll -Recurse | ForEach-Object {
+            Write-Host "Compressing $($_.Name)..."
+            upx --best --lzma $_.FullName
+          }
+
+          # Create SFX (Single Executable)
+          # 1. Create 7z archive of the artifact folder content
+          # 2. Concatenate 7z SDX module + config + archive
+          
+          $7zPath = "C:\Program Files\7-Zip\7z.exe"
+          $sfxModule = "C:\Program Files\7-Zip\7z.sfx"
+          
+          if (-not (Test-Path $7zPath)) { 
+            # Fallback if 7-Zip not in standard location, try choco install
+            choco install 7zip -y
+            $7zPath = "C:\Program Files\7-Zip\7z.exe"
+            $sfxModule = "C:\Program Files\7-Zip\7z.sfx"
+          }
+
+          # Create the 7z archive (high compression)
+          & $7zPath a -mx9 -t7z payload.7z ".\artifact\*"
+          
+          # Create SFX config
+          $config = @"
+          ;!@Install@!UTF-8!
+          Title="SuperVTF"
+          ExecuteFile="supervtf.exe"
+          ;!@InstallEnd@!
+          "@
+          Set-Content -Path config.txt -Value $config -Encoding UTF8
+          
+          # Combine to create the single EXE
+          # cmd /c copy /b 7z.sfx + config.txt + payload.7z supervtf-portable.exe
+          cmd /c "copy /b `"$sfxModule`" + config.txt + payload.7z supervtf-portable.exe"
+          
+          # Upload the single EXE
+          Copy-Item supervtf-portable.exe -Destination .
 
       - name: Upload artifact (Linux)
         if: runner.os == 'Linux'
@@ -142,5 +193,5 @@ jobs:
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: supervtf-windows
-          path: supervtf-windows.zip
+          name: supervtf-windows-portable
+          path: supervtf-portable.exe
