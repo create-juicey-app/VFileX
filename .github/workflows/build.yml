@@ -94,22 +94,28 @@ jobs:
           if (Test-Path "media") { Copy-Item "media" -Destination $artifactDir -Recurse }
 
           # 4. Run Windeployqt
-          # Since install-qt-action puts Qt in PATH, we usually don't need full paths.
-          # However, to be safe, we use the env var it provides ($env:IQTA_TOOLS_ROOT is sometimes set, 
-          # but simply calling windeployqt usually works if the previous step succeeded).
           Write-Host "Running windeployqt..."
+          # We do not define --plugindir, allowing Qt to place plugins in default locations (usually ./platforms)
           windeployqt --dir $artifactDir --qmldir qml --no-translations --no-compiler-runtime --no-opengl-sw --release "$artifactDir\supervtf.exe"
 
           # 5. Clean up bloat
           if (Test-Path "$artifactDir\opengl32sw.dll") { Remove-Item "$artifactDir\opengl32sw.dll" }
-          # Remove .pdb files if any copied
           Get-ChildItem $artifactDir -Filter *.pdb -Recurse | Remove-Item
 
-          # 6. Verify Critical DLL (Sanity Check)
-          if (-not (Test-Path "$artifactDir\Qt6Core.dll")) { throw "Qt6Core.dll missing! Windeployqt failed." }
-          if (-not (Test-Path "$artifactDir\plugins\platforms\qwindows.dll")) { throw "qwindows.dll missing! Windeployqt failed." }
+          # --- DEBUG: List what we actually have ---
+          Write-Host "--- Artifact Content Debug ---"
+          Get-ChildItem -Path $artifactDir -Recurse | Select-Object FullName
+          Write-Host "------------------------------"
 
-          # 7. Compress ONLY the Executable (NEVER compress DLLs)
+          # 6. Verify Critical DLL (FIXED PATHS)
+          if (-not (Test-Path "$artifactDir\Qt6Core.dll")) { throw "Qt6Core.dll missing! Windeployqt failed." }
+          
+          # FIXED: Check strictly for 'platforms/qwindows.dll' (standard Qt6 layout)
+          if (-not (Test-Path "$artifactDir\platforms\qwindows.dll")) { 
+             throw "qwindows.dll missing! Windeployqt failed to copy platform plugin." 
+          }
+
+          # 7. Compress ONLY the Executable
           Write-Host "Compressing EXE..."
           upx --best --lzma --force "$artifactDir\supervtf.exe"
 
@@ -117,24 +123,19 @@ jobs:
           $7zPath = "C:\Program Files\7-Zip\7z.exe"
           $sfxModule = "C:\Program Files\7-Zip\7z.sfx"
           
-          # Create archive of the artifact FOLDER contents
           & $7zPath a -t7z -m0=lzma2 -mx=9 -mfb=273 -ms=on "payload.7z" ".\$artifactDir\*"
 
-          # Create Config
-          # REMOVED InstallPath="C:\\tmp" to allow default temp behavior
           $configLines = @(
             ';!@Install@!UTF-8!',
             'Title="SuperVTF"',
             'GUIMode="2"',            
-            'OverwriteMode="0"',      # 0=Overwrite all using temp names (safer for temp runs)
+            'OverwriteMode="0"',
             'RunProgram="supervtf.exe"',
             ';!@InstallEnd@!'
           )
           $configLines -join "`r`n" | Set-Content -Path config.txt -NoNewline
 
-          # Merge
           cmd /c "copy /b `"$sfxModule`" + config.txt + payload.7z supervtf-portable.exe"
-
       # --- UPLOADS ---
       - name: Upload artifact (Linux)
         if: matrix.os == 'ubuntu-latest'
