@@ -78,8 +78,8 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          # 1. Install Tools
-          choco install upx 7zip -y
+          # 1. Install 7-Zip (No UPX)
+          choco install 7zip -y
           
           # 2. Prepare Directory
           $artifactDir = "artifact"
@@ -89,40 +89,35 @@ jobs:
           if (-not (Test-Path $exeSource)) { throw "Executable not found at $exeSource" }
           Copy-Item $exeSource -Destination $artifactDir
           
-          # 3. Copy QML/Resources (Important for windeployqt to find imports)
+          # 3. Copy QML/Resources
           if (Test-Path "qml") { Copy-Item "qml" -Destination $artifactDir -Recurse }
           if (Test-Path "media") { Copy-Item "media" -Destination $artifactDir -Recurse }
 
-          # 4. Run Windeployqt
+          # 4. Run Windeployqt (SAFE MODE)
+          # REMOVED: --no-compiler-runtime (We WANT the runtime now)
+          # ADDED: --compiler-runtime (Bundles vcruntime140.dll, etc.)
           Write-Host "Running windeployqt..."
-          # We do not define --plugindir, allowing Qt to place plugins in default locations (usually ./platforms)
-          windeployqt --dir $artifactDir --qmldir qml --no-translations --no-compiler-runtime --no-opengl-sw --release "$artifactDir\supervtf.exe"
+          windeployqt --dir $artifactDir --qmldir qml --compiler-runtime --no-translations --no-opengl-sw --release "$artifactDir\supervtf.exe"
 
-          # 5. Clean up bloat
+          # 5. Clean up bloat (but keep the important stuff)
           if (Test-Path "$artifactDir\opengl32sw.dll") { Remove-Item "$artifactDir\opengl32sw.dll" }
           Get-ChildItem $artifactDir -Filter *.pdb -Recurse | Remove-Item
 
-          # --- DEBUG: List what we actually have ---
-          Write-Host "--- Artifact Content Debug ---"
-          Get-ChildItem -Path $artifactDir -Recurse | Select-Object FullName
-          Write-Host "------------------------------"
-
-          # 6. Verify Critical DLL (FIXED PATHS)
-          if (-not (Test-Path "$artifactDir\Qt6Core.dll")) { throw "Qt6Core.dll missing! Windeployqt failed." }
+          # 6. Verify Critical DLLs
+          if (-not (Test-Path "$artifactDir\Qt6Core.dll")) { throw "Qt6Core.dll missing!" }
+          if (-not (Test-Path "$artifactDir\platforms\qwindows.dll")) { throw "qwindows.dll missing!" }
           
-          # FIXED: Check strictly for 'platforms/qwindows.dll' (standard Qt6 layout)
-          if (-not (Test-Path "$artifactDir\platforms\qwindows.dll")) { 
-             throw "qwindows.dll missing! Windeployqt failed to copy platform plugin." 
-          }
+          # Verify Runtime (prevent 0xc0000142 on fresh Windows installs)
+          # Note: Names vary slightly by version, but usually vcruntime140.dll is the key one.
+          $runtimes = Get-ChildItem $artifactDir -Filter "*runtime*.dll"
+          if ($runtimes.Count -eq 0) { Write-Host "WARNING: No compiler runtime DLLs found. The app might require VC++ Redist on user machine." }
 
-          # 7. Compress ONLY the Executable
-          Write-Host "Compressing EXE..."
-          upx --best --lzma --force "$artifactDir\supervtf.exe"
-
-          # 8. Create SFX with 7-Zip
+          # 7. Create SFX with 7-Zip (NO UPX COMPRESSION STEPS)
+          Write-Host "Creating SFX..."
           $7zPath = "C:\Program Files\7-Zip\7z.exe"
           $sfxModule = "C:\Program Files\7-Zip\7z.sfx"
           
+          # High compression 7z archive
           & $7zPath a -t7z -m0=lzma2 -mx=9 -mfb=273 -ms=on "payload.7z" ".\$artifactDir\*"
 
           $configLines = @(
