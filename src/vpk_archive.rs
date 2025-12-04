@@ -1,4 +1,4 @@
-//! VPK Archive Support for SuperVTF
+//! VPK Archive Support for VFileX
 //!
 //! This module provides functionality to read VTF/VMT files from Valve's VPK archives,
 //! enabling support for built-in textures from games like HL2, TF2, Portal, etc.

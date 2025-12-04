@@ -1,12 +1,12 @@
 [package]
-name = "supervtf"
+name = "VFileX"
 version = "0.8.0"
 edition = "2024"
 build = "build.rs"
 authors = ["JuiceyDev","Olxgs"]
 description = "A high-speed, cross-platform editor for Valve Material (.VMT) files"
 license = "MIT"
-repository = "https://github.com/create-juicey-app/SuperVTF"
+repository = "https://github.com/create-juicey-app/VFileX"
 
 [dependencies]
 cxx = "1.0"
@@ -30,7 +30,7 @@ vpk = "0.3"
 cxx-qt-build = "0.7"
 
 [[bin]]
-name = "supervtf"
+name = "VFileX"
 path = "src/main.rs"
 
 [profile.release]

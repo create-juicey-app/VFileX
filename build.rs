@@ -1,4 +1,4 @@
-//! Build script for SuperVTF
+//! Build script for VFileX
 //!
 //! handles basically CXX-Qt code generation and Qt resource compilation
 
@@ -8,7 +8,7 @@ fn main() {
     CxxQtBuilder::new()
         // register QML module
         .qml_module(QmlModule {
-            uri: "com.supervtf",
+            uri: "com.VFileX",
             rust_files: &[
                 "src/bridge/material_model.rs",
                 "src/bridge/image_provider.rs",

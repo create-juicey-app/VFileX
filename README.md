@@ -1,4 +1,4 @@
-# SuperVTF - yet another VTF/VMT Editor
+# VFileX - yet another VTF/VMT Editor
 
 > A high-speed, cross-platform editor for Valve Material (.VMT) files.
 
@@ -63,8 +63,8 @@ brew install qt@6 cmake ninja
 
 ```bash
 # Clone the repository
-git clone https://github.com/create-juicey-app/SuperVTF.git
-cd SuperVTF
+git clone https://github.com/create-juicey-app/VFileX.git
+cd VFileX
 
 # Build with release optimizations
 cargo build --release

@@ -8,7 +8,7 @@ mod ffi {
         include!("cpp/helpers.h");
 
         // Summons the application icon from the Qt resource dimension
-        #[namespace = "supervtf"]
+        #[namespace = "VFileX"]
         fn setApplicationIcon(resource_path: &str);
     }
 }

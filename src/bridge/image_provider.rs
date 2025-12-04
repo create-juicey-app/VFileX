@@ -315,7 +315,7 @@ impl qobject::TextureProvider {
             .collect();
         
         let temp_dir = std::env::temp_dir();
-        let thumbnail_path = temp_dir.join(format!("supervtf_thumb_{}.png", cache_key));
+        let thumbnail_path = temp_dir.join(format!("VFileX_thumb_{}.png", cache_key));
 
         // Return cached thumbnail if it exists (fast path - no I/O except stat)
         if thumbnail_path.exists() {
@@ -575,7 +575,7 @@ impl qobject::TextureProvider {
                 prefer
             } else { self.current_mipmap };
             let temp_dir = std::env::temp_dir();
-            let preview_path = temp_dir.join(format!("supervtf_preview_{}_{}.png", frame, mipmap));
+            let preview_path = temp_dir.join(format!("VFileX_preview_{}_{}.png", frame, mipmap));
 
                 // If the decoded frame matches our desired mipmap, save that; otherwise decode new one
                 if decoded.mipmap_level as i32 == mipmap as i32 {

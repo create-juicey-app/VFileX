@@ -1,4 +1,4 @@
-//! Application controller for SuperVTF (the brains of the operation, such as they are)
+//! Application controller for VFileX (the brains of the operation, such as they are)
 
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -42,136 +42,136 @@ pub mod qobject {
         #[qproperty(bool, auto_save)]
         #[qproperty(bool, is_first_run)]
         #[qproperty(QString, selected_game)]
-        type SuperVtfApp = super::SuperVtfAppRust;
+        type VFileXApp = super::VFileXAppRust;
     }
 
     unsafe extern "RustQt" {
         // Initialize the application
         #[qinvokable]
-        fn initialize(self: Pin<&mut SuperVtfApp>);
+        fn initialize(self: Pin<&mut VFileXApp>);
 
         // Set the materials root directory
         #[qinvokable]
-        fn set_materials_root_path(self: Pin<&mut SuperVtfApp>, path: &QString);
+        fn set_materials_root_path(self: Pin<&mut VFileXApp>, path: &QString);
 
         // Add a file to recent files
         #[qinvokable]
-        fn add_recent_file(self: Pin<&mut SuperVtfApp>, path: &QString);
+        fn add_recent_file(self: Pin<&mut VFileXApp>, path: &QString);
 
         // Clear recent files
         #[qinvokable]
-        fn clear_recent_files(self: Pin<&mut SuperVtfApp>);
+        fn clear_recent_files(self: Pin<&mut VFileXApp>);
 
         // Get file dialog filter for VMT files
         #[qinvokable]
-        fn get_vmt_filter(self: &SuperVtfApp) -> QString;
+        fn get_vmt_filter(self: &VFileXApp) -> QString;
 
         // Get file dialog filter for VTF files
         #[qinvokable]
-        fn get_vtf_filter(self: &SuperVtfApp) -> QString;
+        fn get_vtf_filter(self: &VFileXApp) -> QString;
 
         // Get file dialog filter for image files
         #[qinvokable]
-        fn get_image_filter(self: &SuperVtfApp) -> QString;
+        fn get_image_filter(self: &VFileXApp) -> QString;
 
         // Browse for materials directory
         #[qinvokable]
-        fn browse_materials_directory(self: &SuperVtfApp) -> QString;
+        fn browse_materials_directory(self: &VFileXApp) -> QString;
 
         // Get default materials root path
         #[qinvokable]
-        fn get_default_materials_root(self: &SuperVtfApp) -> QString;
+        fn get_default_materials_root(self: &VFileXApp) -> QString;
 
         // Convert an image file to VTF
         #[qinvokable]
-        fn convert_to_vtf(self: &SuperVtfApp, source: &QString, dest: &QString) -> bool;
+        fn convert_to_vtf(self: &VFileXApp, source: &QString, dest: &QString) -> bool;
 
         // Export a VTF to an image format
         #[qinvokable]
-        fn export_vtf_to_image(self: &SuperVtfApp, source: &QString, dest: &QString) -> bool;
+        fn export_vtf_to_image(self: &VFileXApp, source: &QString, dest: &QString) -> bool;
 
         // Open a path in the system file browser
         #[qinvokable]
-        fn reveal_in_explorer(self: &SuperVtfApp, path: &QString);
+        fn reveal_in_explorer(self: &VFileXApp, path: &QString);
 
         // Save application settings
         #[qinvokable]
-        fn save_settings(self: &SuperVtfApp);
+        fn save_settings(self: &VFileXApp);
 
         // Load application settings
         #[qinvokable]
-        fn load_settings(self: Pin<&mut SuperVtfApp>);
+        fn load_settings(self: Pin<&mut VFileXApp>);
 
         // Set theme
         #[qinvokable]
-        fn set_app_theme(self: Pin<&mut SuperVtfApp>, theme: &QString);
+        fn set_app_theme(self: Pin<&mut VFileXApp>, theme: &QString);
 
         // Get supported shader list
         #[qinvokable]
-        fn get_supported_shaders(self: &SuperVtfApp) -> QStringList;
+        fn get_supported_shaders(self: &VFileXApp) -> QStringList;
 
         // Detect game installation paths
         #[qinvokable]
-        fn detect_game_paths(self: &SuperVtfApp) -> QStringList;
+        fn detect_game_paths(self: &VFileXApp) -> QStringList;
 
         // Get list of detected games (returns "GameName|path" pairs)
         #[qinvokable]
-        fn get_detected_games(self: &SuperVtfApp) -> QStringList;
+        fn get_detected_games(self: &VFileXApp) -> QStringList;
 
         // Set the selected game by name
         #[qinvokable]
-        fn select_game(self: Pin<&mut SuperVtfApp>, game_name: &QString);
+        fn select_game(self: Pin<&mut VFileXApp>, game_name: &QString);
 
         // Mark first run as complete
         #[qinvokable]
-        fn complete_first_run(self: Pin<&mut SuperVtfApp>);
+        fn complete_first_run(self: Pin<&mut VFileXApp>);
 
         // Get VPK archive count for the current game
         #[qinvokable]
-        fn get_vpk_count(self: &SuperVtfApp) -> i32;
+        fn get_vpk_count(self: &VFileXApp) -> i32;
 
         // Load VPK archives for the current game (returns count of loaded archives)
         #[qinvokable]
-        fn load_game_vpks(self: &SuperVtfApp) -> i32;
+        fn load_game_vpks(self: &VFileXApp) -> i32;
 
         // List materials available in VPK archives (returns paths like "brick/brickfloor001a")
         #[qinvokable]
-        fn list_vpk_materials(self: &SuperVtfApp, filter: &QString) -> QStringList;
+        fn list_vpk_materials(self: &VFileXApp, filter: &QString) -> QStringList;
 
         // Check if a texture exists (on disk or in VPK)
         #[qinvokable]
-        fn texture_exists(self: &SuperVtfApp, texture_path: &QString) -> bool;
+        fn texture_exists(self: &VFileXApp, texture_path: &QString) -> bool;
 
         // Get autocomplete suggestions for a texture path
         // Returns a list of suggestions that start with the given prefix
         #[qinvokable]
-        fn get_texture_completions(self: &SuperVtfApp, prefix: &QString, max_results: i32) -> QStringList;
+        fn get_texture_completions(self: &VFileXApp, prefix: &QString, max_results: i32) -> QStringList;
 
         // Get the "ghost" completion for a texture path (single best match)
         // Returns the remaining text to complete the path, or empty if no match
         #[qinvokable]
-        fn get_texture_ghost(self: &SuperVtfApp, prefix: &QString) -> QString;
+        fn get_texture_ghost(self: &VFileXApp, prefix: &QString) -> QString;
 
         // Test VPK loading with a known HL2 texture
         // Returns: "OK: <bytes>" on success, "ERR: <message>" on failure
         #[qinvokable]
-        fn test_vpk_texture(self: &SuperVtfApp, texture_path: &QString) -> QString;
+        fn test_vpk_texture(self: &VFileXApp, texture_path: &QString) -> QString;
 
         // Get list of custom textures (loose .vtf files on disk, not in VPK)
         // Returns a list of texture paths relative to materials folder
         #[qinvokable]
-        fn get_custom_textures(self: &SuperVtfApp, max_results: i32) -> QStringList;
+        fn get_custom_textures(self: &VFileXApp, max_results: i32) -> QStringList;
     }
 
     // Signals
     unsafe extern "RustQt" {
         // Emitted when settings change
         #[qsignal]
-        fn settings_changed(self: Pin<&mut SuperVtfApp>);
+        fn settings_changed(self: Pin<&mut VFileXApp>);
 
         // Emitted on status message
         #[qsignal]
-        fn status_message(self: Pin<&mut SuperVtfApp>, message: QString);
+        fn status_message(self: Pin<&mut VFileXApp>, message: QString);
     }
 }
 
@@ -180,12 +180,12 @@ use crate::vpk_archive::{count_vpk_archives, VPK_MANAGER};
 use crate::vtf::{VtfBuilder, VtfDecoder};
 use qobject::*;
 
-const APP_NAME: &str = "SuperVTF";
+const APP_NAME: &str = "VFileX";
 const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 const MAX_RECENT_FILES: usize = 10;
 
 // Rust implementation
-pub struct SuperVtfAppRust {
+pub struct VFileXAppRust {
     shader_registry: ShaderRegistry,
     settings_path: PathBuf,
 
@@ -200,11 +200,11 @@ pub struct SuperVtfAppRust {
     selected_game: QString,
 }
 
-impl Default for SuperVtfAppRust {
+impl Default for VFileXAppRust {
     fn default() -> Self {
         let settings_path = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("supervtf")
+            .join("VFileX")
             .join("settings.toml");
 
         // First run if settings file doesn't exist
@@ -225,7 +225,7 @@ impl Default for SuperVtfAppRust {
     }
 }
 
-impl qobject::SuperVtfApp {
+impl qobject::VFileXApp {
     // Start the engines
     fn initialize(mut self: Pin<&mut Self>) {
         // Load settings
@@ -244,7 +244,7 @@ impl qobject::SuperVtfApp {
         }
 
         self.as_mut()
-            .status_message(QString::from("SuperVTF initialized"));
+            .status_message(QString::from("VFileX initialized"));
     }
 
     // Set the materials root directory
@@ -389,7 +389,7 @@ impl qobject::SuperVtfApp {
 
         // ough
         let settings = format!(
-            r#"# SuperVTF Settings
+            r#"# VFileX Settings
 materials_root = "{}"
 selected_game = "{}"
 theme = "{}"
@@ -899,7 +899,7 @@ auto_save = {}
     }
 }
 
-impl SuperVtfAppRust {
+impl VFileXAppRust {
     // Helper: Collect ALL texture files from disk (for browsing, no prefix filter)
     fn collect_all_disk_textures(&self, dir: &PathBuf, base: &PathBuf, results: &mut Vec<String>, max: usize) {
         if results.len() >= max {

@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
 
-import com.supervtf 1.0
+import com.VFileX 1.0
 // i need to separate this code, it's getting big
 ApplicationWindow {
     id: root
@@ -36,8 +36,8 @@ ApplicationWindow {
     minimumHeight: 600
     visible: true
     title: materialModel.is_modified ? 
-           `SuperVTF - ${materialModel.file_path || "Untitled"}*` :
-           `SuperVTF - ${materialModel.file_path || "Untitled"}`
+           `VFileX - ${materialModel.file_path || "Untitled"}*` :
+           `VFileX - ${materialModel.file_path || "Untitled"}`
     color: "#1e1e1e"
     
     // Custom colors
@@ -61,7 +61,7 @@ ApplicationWindow {
     readonly property int animEasingBounce: Easing.OutBack  // Slight overshoot for playfulness
 
     // Application controller
-    SuperVtfApp {
+    VFileXApp {
         id: app
         Component.onCompleted: {
             initialize()
@@ -328,7 +328,7 @@ ApplicationWindow {
         
         Menu {
             title: "Help"
-            Action { text: "About SuperVTF"; onTriggered: aboutDialog.open() }
+            Action { text: "About VFileX"; onTriggered: aboutDialog.open() }
         }
     }
     
@@ -2216,7 +2216,7 @@ ApplicationWindow {
                         spacing: 2
                         
                         Text {
-                            text: "SuperVTF"
+                            text: "VFileX"
                             color: "white"
                             font.pixelSize: 24
                             font.bold: true
@@ -2414,7 +2414,7 @@ ApplicationWindow {
                     
                     Text {
                         Layout.alignment: Qt.AlignHCenter
-                        text: "👋 Welcome to SuperVTF!"
+                        text: "👋 Welcome to VFileX!"
                         font.pixelSize: 22
                         font.bold: true
                         color: "white"

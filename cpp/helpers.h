@@ -4,7 +4,7 @@
 #include <QString>
 #include "rust/cxx.h"
 
-namespace supervtf {
+namespace VFileX {
 
 inline void setApplicationIcon(rust::Str resourcePath) {
     if (qApp) {
@@ -14,4 +14,4 @@ inline void setApplicationIcon(rust::Str resourcePath) {
     }
 }
 
-} // namespace supervtf
+} // namespace VFileX

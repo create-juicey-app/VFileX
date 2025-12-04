@@ -1,4 +1,4 @@
-//! SuperVTF - VTF/VMT Editor
+//! VFileX - VTF/VMT Editor
 //!
 //! Abandon all hope, ye who enter here.
 //! (Just kidding, it's actually pretty nice)
@@ -53,7 +53,7 @@ fn main() {
 
     // top tier code
     if let Some(engine) = engine.as_mut() {
-        engine.load(&QUrl::from("qrc:/qt/qml/com/supervtf/qml/Main.qml"));
+        engine.load(&QUrl::from("qrc:/qt/qml/com/VFileX/qml/Main.qml"));
     }
 
     if let Some(app) = app.as_mut() {

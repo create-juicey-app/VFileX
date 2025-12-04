@@ -59,19 +59,19 @@ jobs:
           sudo apt-get install -y p7zip-full upx-ucl pixz
           
           mkdir -p artifact
-          cp target/release/supervtf artifact/
+          cp target/release/VFileX artifact/
           cp -r qml media resources.qrc artifact/ || true
 
           # Safe to UPX binary on Linux
-          upx --best --lzma artifact/supervtf || echo "UPX skipped"
+          upx --best --lzma artifact/VFileX || echo "UPX skipped"
 
           cd artifact && tar -cf ../payload.tar * && cd ..
           pixz -9 payload.tar payload.tar.xz
 
-          printf '%s\n' '#!/bin/bash' '# SuperVTF Self-Extracting Launcher' 'TMPDIR=$(mktemp -d /tmp/supervtf.XXXXXX)' 'ARCHIVE_START=$(awk '"'"'/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }'"'"' "$0")' 'tail -n+$ARCHIVE_START "$0" | xz -d | tar -xf - -C "$TMPDIR"' 'cd "$TMPDIR"' './supervtf "$@"' 'EXIT_CODE=$?' 'cd /' 'rm -rf "$TMPDIR"' 'exit $EXIT_CODE' '__ARCHIVE_BELOW__' > supervtf-launcher.sh
-          cat payload.tar.xz >> supervtf-launcher.sh
-          chmod +x supervtf-launcher.sh
-          mv supervtf-launcher.sh supervtf-linux
+          printf '%s\n' '#!/bin/bash' '# VFileX Self-Extracting Launcher' 'TMPDIR=$(mktemp -d /tmp/VFileX.XXXXXX)' 'ARCHIVE_START=$(awk '"'"'/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }'"'"' "$0")' 'tail -n+$ARCHIVE_START "$0" | xz -d | tar -xf - -C "$TMPDIR"' 'cd "$TMPDIR"' './VFileX "$@"' 'EXIT_CODE=$?' 'cd /' 'rm -rf "$TMPDIR"' 'exit $EXIT_CODE' '__ARCHIVE_BELOW__' > VFileX-launcher.sh
+          cat payload.tar.xz >> VFileX-launcher.sh
+          chmod +x VFileX-launcher.sh
+          mv VFileX-launcher.sh VFileX-linux
 
       # --- PACKAGE WINDOWS (FIXED) ---
       - name: Package (Windows)
@@ -85,7 +85,7 @@ jobs:
           $artifactDir = "artifact"
           New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
           
-          $exeSource = "target\release\supervtf.exe"
+          $exeSource = "target\release\VFileX.exe"
           if (-not (Test-Path $exeSource)) { throw "Executable not found at $exeSource" }
           Copy-Item $exeSource -Destination $artifactDir
           
@@ -97,7 +97,7 @@ jobs:
           # REMOVED: --no-compiler-runtime (We WANT the runtime now)
           # ADDED: --compiler-runtime (Bundles vcruntime140.dll, etc.)
           Write-Host "Running windeployqt..."
-          windeployqt --dir $artifactDir --qmldir qml --compiler-runtime --no-translations --no-opengl-sw --release "$artifactDir\supervtf.exe"
+          windeployqt --dir $artifactDir --qmldir qml --compiler-runtime --no-translations --no-opengl-sw --release "$artifactDir\VFileX.exe"
 
           # 5. Clean up bloat (but keep the important stuff)
           if (Test-Path "$artifactDir\opengl32sw.dll") { Remove-Item "$artifactDir\opengl32sw.dll" }
@@ -122,26 +122,26 @@ jobs:
 
           $configLines = @(
             ';!@Install@!UTF-8!',
-            'Title="SuperVTF"',
+            'Title="VFileX"',
             'GUIMode="2"',            
             'OverwriteMode="0"',
-            'RunProgram="supervtf.exe"',
+            'RunProgram="VFileX.exe"',
             ';!@InstallEnd@!'
           )
           $configLines -join "`r`n" | Set-Content -Path config.txt -NoNewline
 
-          cmd /c "copy /b `"$sfxModule`" + config.txt + payload.7z supervtf-portable.exe"
+          cmd /c "copy /b `"$sfxModule`" + config.txt + payload.7z VFileX-portable.exe"
       # --- UPLOADS ---
       - name: Upload artifact (Linux)
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: supervtf-linux
-          path: supervtf-linux
+          name: VFileX-linux
+          path: VFileX-linux
 
       - name: Upload artifact (Windows)
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: supervtf-windows-portable
-          path: supervtf-portable.exe
+          name: VFileX-windows-portable
+          path: VFileX-portable.exe
