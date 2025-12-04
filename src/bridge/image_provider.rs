@@ -54,6 +54,15 @@ pub mod qobject {
             materials_root: &QString,
         ) -> bool;
 
+        // Get a thumbnail preview path for any texture (doesn't affect main provider state)
+        // Returns file:// URL to a cached PNG thumbnail, or empty string on failure
+        #[qinvokable]
+        fn get_thumbnail_for_texture(
+            self: &TextureProvider,
+            texture_path: &QString,
+            materials_root: &QString,
+        ) -> QString;
+
         // Get the raw RGBA data as a byte array for the current frame
         #[qinvokable]
         fn get_rgba_data(self: &TextureProvider) -> QByteArray;
@@ -222,6 +231,86 @@ impl qobject::TextureProvider {
         self.as_mut().set_error_message(msg.clone());
         self.as_mut().error_occurred(msg);
         false
+    }
+
+    // Get a thumbnail preview path for any texture (doesn't affect main provider state)
+    fn get_thumbnail_for_texture(
+        &self,
+        texture_path: &QString,
+        materials_root: &QString,
+    ) -> QString {
+        let texture_path_str = texture_path.to_string();
+        let materials_root_str = materials_root.to_string();
+
+        // Skip empty paths
+        if texture_path_str.is_empty() || materials_root_str.is_empty() {
+            return QString::default();
+        }
+
+        // Generate a cache key from the texture path
+        let cache_key: String = texture_path_str
+            .chars()
+            .map(|c| if c.is_alphanumeric() { c } else { '_' })
+            .collect();
+        
+        let temp_dir = std::env::temp_dir();
+        let thumbnail_path = temp_dir.join(format!("supervtf_thumb_{}.png", cache_key));
+
+        // Return cached thumbnail if it exists (fast path - no I/O except stat)
+        if thumbnail_path.exists() {
+            return QString::from(format!("file://{}", thumbnail_path.to_string_lossy()).as_str());
+        }
+
+        // Try to find and load the texture
+        let mut full_path = PathBuf::from(&materials_root_str);
+        full_path.push(&texture_path_str);
+        full_path.set_extension("vtf");
+
+        // Try alternate path if not found
+        if !full_path.exists() {
+            if !texture_path_str.starts_with("materials/")
+                && !texture_path_str.starts_with("materials\\")
+            {
+                let mut alt_path = PathBuf::from(&materials_root_str);
+                alt_path.push("materials");
+                alt_path.push(&texture_path_str);
+                alt_path.set_extension("vtf");
+                if alt_path.exists() {
+                    full_path = alt_path;
+                }
+            }
+        }
+
+        if !full_path.exists() {
+            return QString::default();
+        }
+
+        // Load the VTF and generate thumbnail
+        match VtfDecoder::load_file(full_path.to_string_lossy().as_ref()) {
+            Ok(vtf) => {
+                // Use a small mipmap for fast thumbnail generation
+                // Higher mipmap number = smaller image = faster decode
+                // Use about halfway through the mipmap chain for small but recognizable thumbnails
+                let mipmap_level = if vtf.header.mipmap_count <= 2 {
+                    0
+                } else {
+                    // Use about halfway - gives ~64x64 or ~128x128 for most textures
+                    vtf.header.mipmap_count / 2
+                };
+                
+                match vtf.decode(mipmap_level, 0) {
+                    Ok(decoded) => {
+                        if decoded.save(thumbnail_path.to_str().unwrap_or("")).is_ok() {
+                            QString::from(format!("file://{}", thumbnail_path.to_string_lossy()).as_str())
+                        } else {
+                            QString::default()
+                        }
+                    }
+                    Err(_) => QString::default(),
+                }
+            }
+            Err(_) => QString::default(),
+        }
     }
 
     // Get the raw RGBA data as a byte array

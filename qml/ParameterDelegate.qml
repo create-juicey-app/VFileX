@@ -763,7 +763,7 @@ Item {
                 id: textureField
                 Layout.fillWidth: true
                 text: parameterEntry.value
-                placeholderText: "path/to/texture"
+                placeholderText: "texture.vtf"
                 
                 onTextChanged: {
                     root.valueChanged(parameterEntry.name, text)

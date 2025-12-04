@@ -286,6 +286,27 @@ ApplicationWindow {
         }
         
         Menu {
+            title: "Settings"
+            Action { 
+                text: "Select Game..."
+                onTriggered: {
+                    welcomeDialog.loadDetectedGames()
+                    welcomeDialog.selectedIndex = -1
+                    welcomeDialog.open()
+                }
+            }
+            Action {
+                text: "Browse Materials Folder..."
+                onTriggered: browseMaterialsDialog.open()
+            }
+            MenuSeparator {}
+            Menu {
+                title: "Current: " + (app.selected_game || "Not Set")
+                enabled: false
+            }
+        }
+        
+        Menu {
             title: "Help"
             Action { text: "About SuperVTF"; onTriggered: aboutDialog.open() }
         }
@@ -922,13 +943,69 @@ ApplicationWindow {
                                         color: root.inputBg
                                         border.color: root.inputBorder
                                         radius: 4
+                                        clip: true
                                         
-                                        // Texture icon placeholder (image provider not available)
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: delegateRoot.pValue ? "🖼" : "?"
-                                            color: delegateRoot.pValue ? root.textColor : root.textDim
-                                            font.pixelSize: 18
+                                        // Debounced thumbnail source
+                                        property string pendingTexture: ""
+                                        property string thumbnailSource: ""
+                                        
+                                        Timer {
+                                            id: thumbnailDebounce
+                                            interval: 500  // Wait 500ms after typing stops
+                                            onTriggered: {
+                                                if (parent.pendingTexture.length > 0 && app.materials_root.length > 0) {
+                                                    var result = textureProvider.get_thumbnail_for_texture(parent.pendingTexture, app.materials_root)
+                                                    parent.thumbnailSource = result
+                                                }
+                                            }
+                                        }
+                                        
+                                        // Update pending texture when value changes
+                                        Connections {
+                                            target: delegateRoot
+                                            function onPValueChanged() {
+                                                if (delegateRoot.pDataType.toLowerCase() === "texture") {
+                                                    var texPath = (delegateRoot.pValue || "").replace(/\.vtf$/i, "")
+                                                    parent.pendingTexture = texPath
+                                                    parent.thumbnailSource = ""  // Clear while loading
+                                                    thumbnailDebounce.restart()
+                                                }
+                                            }
+                                        }
+                                        
+                                        // Initial load
+                                        Component.onCompleted: {
+                                            if (delegateRoot.pValue && delegateRoot.pValue.length > 0) {
+                                                var texPath = delegateRoot.pValue.replace(/\.vtf$/i, "")
+                                                pendingTexture = texPath
+                                                // Check cache immediately (fast), defer full load
+                                                thumbnailDebounce.start()
+                                            }
+                                        }
+                                        
+                                        Image {
+                                            id: textureThumbnail
+                                            anchors.fill: parent
+                                            anchors.margins: 2
+                                            fillMode: Image.PreserveAspectFit
+                                            cache: true
+                                            asynchronous: true
+                                            source: parent.thumbnailSource
+                                            
+                                            // Fallback text when image not loaded
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: {
+                                                    if (thumbnailDebounce.running) return "..."
+                                                    if (parent.status === Image.Error) return "!"
+                                                    if (parent.status === Image.Loading) return "..."
+                                                    if (!parent.source || parent.source == "") return "?"
+                                                    return "?"
+                                                }
+                                                color: parent.status === Image.Error ? "#ff6b6b" : root.textDim
+                                                font.pixelSize: 14
+                                                visible: parent.status !== Image.Ready
+                                            }
                                         }
                                     }
                                     
@@ -936,7 +1013,7 @@ ApplicationWindow {
                                         id: textureField
                                         Layout.fillWidth: true
                                         text: delegateRoot.pValue
-                                        placeholderText: "path/to/texture"
+                                        placeholderText: "texture.vtf"
                                         inputMethodHints: Qt.ImhNoPredictiveText
                                         
                                         onTextChanged: {
@@ -2010,7 +2087,28 @@ ApplicationWindow {
                     color: "#1e1e1e"
                     radius: 6
                     
-    
+                    Column {
+                        id: featuresCol
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: 4
+                        
+                        Text {
+                            text: "• Edit VMT shader parameters"
+                            color: root.textColor
+                            font.pixelSize: 12
+                        }
+                        Text {
+                            text: "• Preview VTF textures"
+                            color: root.textColor
+                            font.pixelSize: 12
+                        }
+                        Text {
+                            text: "• Cross-platform (Windows, Linux, macOS)"
+                            color: root.textColor
+                            font.pixelSize: 12
+                        }
+                    }
                 }
                 
                 // Divider
@@ -2094,6 +2192,363 @@ ApplicationWindow {
                     }
                 }
             }
+        }
+    }
+    
+    // ===== WELCOME / GAME SETUP DIALOG =====
+    Dialog {
+        id: welcomeDialog
+        modal: true
+        anchors.centerIn: parent
+        width: 500
+        padding: 0
+        closePolicy: Popup.NoAutoClose
+        
+        // Show on first run
+        Component.onCompleted: {
+            if (app.is_first_run) {
+                loadDetectedGames()
+                open()
+            }
+        }
+        
+        property var detectedGames: []
+        property int selectedIndex: -1
+        
+        function loadDetectedGames() {
+            detectedGames = []
+            var games = app.get_detected_games()
+            for (var i = 0; i < games.length; i++) {
+                var parts = games[i].split("|")
+                if (parts.length >= 2) {
+                    detectedGames.push({
+                        name: parts[0],
+                        path: parts[1],
+                        icon: parts.length >= 3 ? parts[2] : ""
+                    })
+                }
+            }
+            detectedGamesChanged()
+        }
+        
+        background: Rectangle {
+            color: root.panelBg
+            radius: 12
+        }
+        
+        contentItem: ColumnLayout {
+            spacing: 0
+            
+            // Header
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 80
+                color: root.accent
+                radius: 12
+                
+                // Square off bottom corners
+                Rectangle {
+                    anchors.bottom: parent.bottom
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    height: 12
+                    color: parent.color
+                }
+                
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 4
+                    
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: "👋 Welcome to SuperVTF!"
+                        font.pixelSize: 22
+                        font.bold: true
+                        color: "white"
+                    }
+                    
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: "Let's set up your Source game"
+                        font.pixelSize: 13
+                        color: Qt.rgba(1, 1, 1, 0.8)
+                    }
+                }
+            }
+            
+            // Content
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.margins: 20
+                spacing: 16
+                
+                Text {
+                    Layout.fillWidth: true
+                    text: welcomeDialog.detectedGames.length > 0 
+                        ? "We found these Source games installed. Select one to use its textures:"
+                        : "No Source games detected. You can browse for a materials folder manually."
+                    font.pixelSize: 13
+                    color: root.textColor
+                    wrapMode: Text.WordWrap
+                }
+                
+                // Game list
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 200
+                    color: root.inputBg
+                    border.color: root.inputBorder
+                    radius: 6
+                    visible: welcomeDialog.detectedGames.length > 0
+                    
+                    ListView {
+                        id: gameListView
+                        anchors.fill: parent
+                        anchors.margins: 4
+                        clip: true
+                        model: welcomeDialog.detectedGames
+                        spacing: 4
+                        
+                        delegate: Rectangle {
+                            width: gameListView.width
+                            height: 52
+                            color: welcomeDialog.selectedIndex === index ? root.accent : 
+                                   (gameMouseArea.containsMouse ? root.buttonHover : "transparent")
+                            radius: 6
+                            
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 12
+                                spacing: 12
+                                
+                                // Game icon
+                                Rectangle {
+                                    Layout.preferredWidth: 36
+                                    Layout.preferredHeight: 36
+                                    Layout.alignment: Qt.AlignVCenter
+                                    color: "transparent"
+                                    
+                                    Image {
+                                        id: gameIcon
+                                        anchors.fill: parent
+                                        source: modelData.icon || ""
+                                        fillMode: Image.PreserveAspectFit
+                                        visible: status === Image.Ready
+                                        smooth: true
+                                        mipmap: true
+                                    }
+                                    
+                                    // Fallback emoji when no icon
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "🎮"
+                                        font.pixelSize: 24
+                                        visible: gameIcon.status !== Image.Ready
+                                    }
+                                }
+                                
+                                // Game name and path
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    Layout.alignment: Qt.AlignVCenter
+                                    spacing: 2
+                                    
+                                    Text {
+                                        text: modelData.name
+                                        font.pixelSize: 14
+                                        font.bold: true
+                                        color: welcomeDialog.selectedIndex === index ? "white" : root.textColor
+                                    }
+                                    
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: modelData.path
+                                        font.pixelSize: 10
+                                        color: welcomeDialog.selectedIndex === index ? Qt.rgba(1,1,1,0.7) : root.textDim
+                                        elide: Text.ElideMiddle
+                                    }
+                                }
+                                
+                                // Checkmark when selected
+                                Text {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    text: welcomeDialog.selectedIndex === index ? "✓" : ""
+                                    font.pixelSize: 18
+                                    font.bold: true
+                                    color: "white"
+                                }
+                            }
+                            
+                            MouseArea {
+                                id: gameMouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: welcomeDialog.selectedIndex = index
+                            }
+                        }
+                        
+                        ScrollBar.vertical: ScrollBar {
+                            policy: ScrollBar.AsNeeded
+                        }
+                    }
+                }
+                
+                // Or browse manually
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 52
+                    color: browseMouseArea.containsMouse ? root.buttonHover : root.inputBg
+                    border.color: root.inputBorder
+                    radius: 6
+                    
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 12
+                        anchors.rightMargin: 12
+                        spacing: 12
+                        
+                        // Folder icon placeholder
+                        Rectangle {
+                            Layout.preferredWidth: 36
+                            Layout.preferredHeight: 36
+                            Layout.alignment: Qt.AlignVCenter
+                            color: "transparent"
+                            
+                            Text {
+                                anchors.centerIn: parent
+                                text: "📁"
+                                font.pixelSize: 24
+                            }
+                        }
+                        
+                        Text {
+                            Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignVCenter
+                            text: "Browse for materials folder manually..."
+                            font.pixelSize: 14
+                            color: root.textColor
+                        }
+                    }
+                    
+                    MouseArea {
+                        id: browseMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: browseMaterialsDialog.open()
+                    }
+                }
+                
+                // Selected path display
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: manualPathField.implicitHeight + 16
+                    color: root.inputBg
+                    border.color: root.inputBorder
+                    radius: 6
+                    visible: manualPathField.text.length > 0
+                    
+                    TextField {
+                        id: manualPathField
+                        anchors.fill: parent
+                        anchors.margins: 4
+                        background: null
+                        color: root.textColor
+                        font.pixelSize: 11
+                        readOnly: true
+                        text: welcomeDialog.selectedIndex >= 0 && welcomeDialog.detectedGames.length > 0
+                            ? welcomeDialog.detectedGames[welcomeDialog.selectedIndex].path
+                            : ""
+                    }
+                }
+            }
+            
+            // Footer buttons
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 60
+                color: Qt.darker(root.panelBg, 1.1)
+                
+                // Round bottom corners
+                Rectangle {
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    height: 12
+                    color: parent.color
+                }
+                
+                RowLayout {
+                    anchors.centerIn: parent
+                    anchors.margins: 16
+                    spacing: 12
+                    
+                    Button {
+                        text: "Skip for Now"
+                        flat: true
+                        onClicked: {
+                            app.complete_first_run()
+                            welcomeDialog.close()
+                        }
+                        
+                        contentItem: Text {
+                            text: parent.text
+                            font.pixelSize: 13
+                            color: root.textDim
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        
+                        background: Rectangle {
+                            color: parent.hovered ? root.buttonHover : "transparent"
+                            radius: 6
+                        }
+                    }
+                    
+                    Button {
+                        text: "Continue"
+                        enabled: welcomeDialog.selectedIndex >= 0 || manualPathField.text.length > 0
+                        onClicked: {
+                            if (welcomeDialog.selectedIndex >= 0 && welcomeDialog.detectedGames.length > 0) {
+                                var game = welcomeDialog.detectedGames[welcomeDialog.selectedIndex]
+                                app.select_game(game.name)
+                            }
+                            app.complete_first_run()
+                            welcomeDialog.close()
+                        }
+                        
+                        contentItem: Text {
+                            text: parent.text
+                            font.pixelSize: 13
+                            font.bold: true
+                            color: parent.enabled ? "white" : root.textDim
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        
+                        background: Rectangle {
+                            color: parent.enabled 
+                                ? (parent.hovered ? root.accentHover : root.accent)
+                                : root.buttonBg
+                            radius: 6
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Browse materials folder dialog
+    FolderDialog {
+        id: browseMaterialsDialog
+        title: "Select Materials Folder"
+        onAccepted: {
+            var path = root.urlToLocalPath(selectedFolder)
+            app.set_materials_root_path(path)
+            manualPathField.text = path
+            welcomeDialog.selectedIndex = -1
         }
     }
     
