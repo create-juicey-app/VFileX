@@ -397,12 +397,18 @@ ApplicationWindow {
                         spacing: 8
                         model: parameterListModel
                         
-                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                        // Account for scrollbar width on Windows (ofc)
+                        property real scrollBarWidth: paramListScrollBar.visible ? paramListScrollBar.width : 0
+                        
+                        ScrollBar.vertical: ScrollBar { 
+                            id: paramListScrollBar
+                            policy: ScrollBar.AsNeeded 
+                        }
                         
                         section.property: "paramCategory"
                         section.criteria: ViewSection.FullString
                         section.delegate: Rectangle {
-                            width: paramList.width - 10
+                            width: paramList.width - 10 - paramList.scrollBarWidth
                             height: 36
                             color: "transparent"
                             
@@ -448,7 +454,7 @@ ApplicationWindow {
                         
                         delegate: Rectangle {
                             id: delegateRoot
-                            width: paramList.width - 10
+                            width: paramList.width - 10 - paramList.scrollBarWidth
                             height: root.isCategoryCollapsed(model.paramCategory) ? 0 : paramContent.height + 16
                             visible: !root.isCategoryCollapsed(model.paramCategory)
                             color: paramMouse.containsMouse ? "#2a2d2e" : "transparent"
