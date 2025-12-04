@@ -26,6 +26,48 @@ Item {
     property color pickedColor: "transparent"
     property point colorPickerPos: Qt.point(0, 0)
     
+    // fucking windows file url bullshit fuck windows
+    function urlToLocalPath(url) {
+        var path = url.toString()
+        if (path.startsWith("file:///")) {
+            // Check if it's a Windows path (has drive letter like C:)
+            // file:///C:/path -> C:/path (Windows)
+            // file:///home/user -> /home/user (Unix)
+            var afterScheme = path.substring(8) // Remove "file:///"
+            if (afterScheme.length >= 2 && afterScheme[1] === ':') {
+                // Windows path: file:///C:/... -> C:/...
+                return afterScheme
+            } else {
+                // Unix path: file:///home/... -> /home/...
+                return "/" + afterScheme
+            }
+        } else if (path.startsWith("file://")) {
+            // Fallback for file:// without third slash
+            return path.substring(7)
+        }
+        return path
+    }
+    
+    // fuck this too
+    function localPathToUrl(path) {
+        var pathStr = path.toString()
+        // Remove any existing file:// prefix first
+        if (pathStr.startsWith("file:///")) {
+            pathStr = urlToLocalPath(pathStr)
+        } else if (pathStr.startsWith("file://")) {
+            pathStr = pathStr.substring(7)
+        }
+        // Add file:// prefix back properly
+        if (pathStr.length >= 2 && pathStr[1] === ':') {
+            // Windows path: C:/... -> file:///C:/...
+            return "file:///" + pathStr
+        } else if (pathStr.startsWith("/")) {
+            // Unix path: /home/... -> file:///home/...
+            return "file://" + pathStr
+        }
+        return "file:///" + pathStr
+    }
+    
     // Debounce timer for mipmap/frame changes
     Timer {
         id: refreshDebounce
@@ -120,9 +162,9 @@ Item {
                 if (textureProvider && textureProvider.is_loaded && root.previewVersion >= 0) {
                     var path = textureProvider.get_preview_path()
                     if (path) {
-                        // Strip file:// if present, then add it back
-                        var cleanPath = path.toString().replace(/^file:\/\//, "")
-                        return "file://" + cleanPath + "?v=" + root.previewVersion
+                        // Convert to proper file URL for the platform
+                        var cleanPath = root.urlToLocalPath(path)
+                        return root.localPathToUrl(cleanPath) + "?v=" + root.previewVersion
                     }
                 }
                 return ""
@@ -718,7 +760,7 @@ Item {
             if (drop.hasUrls) {
                 var url = drop.urls[0].toString()
                 if (url.endsWith(".vtf")) {
-                    textureProvider.load_texture(url.replace("file://", ""))
+                    textureProvider.load_texture(root.urlToLocalPath(url))
                 }
             }
         }

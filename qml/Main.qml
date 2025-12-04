@@ -8,6 +8,28 @@ import com.supervtf 1.0
 ApplicationWindow {
     id: root
     
+    // fucking windows file url bullshit fuck windows
+    function urlToLocalPath(url) {
+        var path = url.toString()
+        if (path.startsWith("file:///")) {
+            // Check if it's a Windows path (has drive letter like C:)
+            // file:///C:/path -> C:/path (Windows)
+            // file:///home/user -> /home/user (Unix)
+            var afterScheme = path.substring(8) // Remove "file:///"
+            if (afterScheme.length >= 2 && afterScheme[1] === ':') {
+                // Windows path: file:///C:/... -> C:/...
+                return afterScheme
+            } else {
+                // Unix path: file:///home/... -> /home/...
+                return "/" + afterScheme
+            }
+        } else if (path.startsWith("file://")) {
+            // Fallback for file:// without third slash
+            return path.substring(7)
+        }
+        return path
+    }
+    
     width: 1400
     height: 900
     minimumWidth: 1000
@@ -152,10 +174,7 @@ ApplicationWindow {
         nameFilters: ["VMT Files (*.vmt)", "All Files (*)"]
         onAccepted: {
             // Convert file:// URL to local path
-            var path = selectedFile.toString()
-            if (path.startsWith("file://")) {
-                path = path.substring(7)
-            }
+            var path = root.urlToLocalPath(selectedFile)
             console.log("Loading VMT file:", path)
             materialModel.load_file(path)
         }
@@ -167,10 +186,7 @@ ApplicationWindow {
         fileMode: FileDialog.SaveFile
         nameFilters: ["VMT Files (*.vmt)"]
         onAccepted: {
-            var path = selectedFile.toString()
-            if (path.startsWith("file://")) {
-                path = path.substring(7)
-            }
+            var path = root.urlToLocalPath(selectedFile)
             materialModel.save_file(path)
         }
     }
@@ -180,10 +196,7 @@ ApplicationWindow {
         title: "Open VTF Texture"
         nameFilters: ["VTF Files (*.vtf)", "All Files (*)"]
         onAccepted: {
-            var path = selectedFile.toString()
-            if (path.startsWith("file://")) {
-                path = path.substring(7)
-            }
+            var path = root.urlToLocalPath(selectedFile)
             textureProvider.load_texture(path)
         }
     }
