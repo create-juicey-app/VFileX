@@ -585,6 +585,7 @@ ApplicationWindow {
                                             readOnly: !intSpinBox.editable
                                             validator: intSpinBox.validator
                                             selectByMouse: true
+                                            inputMethodHints: Qt.ImhNoPredictiveText
                                         }
                                     }
                                     
@@ -649,6 +650,7 @@ ApplicationWindow {
                                         Layout.preferredWidth: 80
                                         text: delegateRoot.pValue
                                         validator: DoubleValidator { }
+                                        inputMethodHints: Qt.ImhNoPredictiveText
                                         
                                         onTextChanged: {
                                             if (parent.visible && acceptableInput) {
@@ -766,6 +768,7 @@ ApplicationWindow {
                                         id: colorTextField
                                         Layout.fillWidth: true
                                         text: delegateRoot.pValue
+                                        inputMethodHints: Qt.ImhNoPredictiveText
                                         
                                         onTextChanged: {
                                             if (parent.visible) {
@@ -833,6 +836,7 @@ ApplicationWindow {
                                         Layout.fillWidth: true
                                         text: delegateRoot.pValue
                                         placeholderText: "path/to/texture"
+                                        inputMethodHints: Qt.ImhNoPredictiveText
                                         
                                         onTextChanged: {
                                             if (parent.visible) {
@@ -931,6 +935,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             text: parent.parent.vec2Values[0].toString()
                                             validator: DoubleValidator {}
+                                            inputMethodHints: Qt.ImhNoPredictiveText
                                             onTextChanged: {
                                                 if (parent.parent.visible && acceptableInput) {
                                                     var newVal = "[" + text + " " + vec2Y.text + "]"
@@ -953,6 +958,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             text: parent.parent.vec2Values[1].toString()
                                             validator: DoubleValidator {}
+                                            inputMethodHints: Qt.ImhNoPredictiveText
                                             onTextChanged: {
                                                 if (parent.parent.visible && acceptableInput) {
                                                     var newVal = "[" + vec2X.text + " " + text + "]"
@@ -999,6 +1005,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             text: parent.parent.vec3Values[0].toString()
                                             validator: DoubleValidator {}
+                                            inputMethodHints: Qt.ImhNoPredictiveText
                                             onTextChanged: {
                                                 if (parent.parent.visible && acceptableInput) {
                                                     var newVal = "[" + text + " " + vec3Y.text + " " + vec3Z.text + "]"
@@ -1021,6 +1028,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             text: parent.parent.vec3Values[1].toString()
                                             validator: DoubleValidator {}
+                                            inputMethodHints: Qt.ImhNoPredictiveText
                                             onTextChanged: {
                                                 if (parent.parent.visible && acceptableInput) {
                                                     var newVal = "[" + vec3X.text + " " + text + " " + vec3Z.text + "]"
@@ -1043,6 +1051,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             text: parent.parent.vec3Values[2].toString()
                                             validator: DoubleValidator {}
+                                            inputMethodHints: Qt.ImhNoPredictiveText
                                             onTextChanged: {
                                                 if (parent.parent.visible && acceptableInput) {
                                                     var newVal = "[" + vec3X.text + " " + vec3Y.text + " " + text + "]"
@@ -1172,6 +1181,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             text: parent.parent.transformValues.scaleX.toString()
                                             validator: DoubleValidator {}
+                                            inputMethodHints: Qt.ImhNoPredictiveText
                                             onEditingFinished: {
                                                 parent.parent.transformValues.scaleX = parseFloat(text) || 1
                                                 materialModel.set_parameter_value(delegateRoot.pName, parent.parent.buildTransformString())
@@ -1184,6 +1194,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             text: parent.parent.transformValues.scaleY.toString()
                                             validator: DoubleValidator {}
+                                            inputMethodHints: Qt.ImhNoPredictiveText
                                             onEditingFinished: {
                                                 parent.parent.transformValues.scaleY = parseFloat(text) || 1
                                                 materialModel.set_parameter_value(delegateRoot.pName, parent.parent.buildTransformString())
@@ -1200,6 +1211,7 @@ ApplicationWindow {
                                             Layout.columnSpan: 2
                                             text: parent.parent.transformValues.rotate.toString()
                                             validator: DoubleValidator {}
+                                            inputMethodHints: Qt.ImhNoPredictiveText
                                             onEditingFinished: {
                                                 parent.parent.transformValues.rotate = parseFloat(text) || 0
                                                 materialModel.set_parameter_value(delegateRoot.pName, parent.parent.buildTransformString())
@@ -1215,6 +1227,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             text: parent.parent.transformValues.translateX.toString()
                                             validator: DoubleValidator {}
+                                            inputMethodHints: Qt.ImhNoPredictiveText
                                             onEditingFinished: {
                                                 parent.parent.transformValues.translateX = parseFloat(text) || 0
                                                 materialModel.set_parameter_value(delegateRoot.pName, parent.parent.buildTransformString())
@@ -1227,6 +1240,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             text: parent.parent.transformValues.translateY.toString()
                                             validator: DoubleValidator {}
+                                            inputMethodHints: Qt.ImhNoPredictiveText
                                             onEditingFinished: {
                                                 parent.parent.transformValues.translateY = parseFloat(text) || 0
                                                 materialModel.set_parameter_value(delegateRoot.pName, parent.parent.buildTransformString())
@@ -1242,6 +1256,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             text: parent.parent.transformValues.centerX.toString()
                                             validator: DoubleValidator {}
+                                            inputMethodHints: Qt.ImhNoPredictiveText
                                             onEditingFinished: {
                                                 parent.parent.transformValues.centerX = parseFloat(text) || 0.5
                                                 materialModel.set_parameter_value(delegateRoot.pName, parent.parent.buildTransformString())
@@ -1254,6 +1269,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             text: parent.parent.transformValues.centerY.toString()
                                             validator: DoubleValidator {}
+                                            inputMethodHints: Qt.ImhNoPredictiveText
                                             onEditingFinished: {
                                                 parent.parent.transformValues.centerY = parseFloat(text) || 0.5
                                                 materialModel.set_parameter_value(delegateRoot.pName, parent.parent.buildTransformString())
@@ -1270,6 +1286,7 @@ ApplicationWindow {
                                         Layout.fillWidth: true
                                         text: delegateRoot.pValue
                                         placeholderText: "center .5 .5 scale 1 1 rotate 0 translate 0 0"
+                                        inputMethodHints: Qt.ImhNoPredictiveText
                                         
                                         onTextChanged: {
                                             if (parent.visible && activeFocus) {
@@ -1300,6 +1317,7 @@ ApplicationWindow {
                                     }
                                     Layout.fillWidth: true
                                     text: delegateRoot.pValue
+                                    inputMethodHints: Qt.ImhNoPredictiveText
                                     
                                     onTextChanged: {
                                         if (visible) {
@@ -1587,6 +1605,7 @@ ApplicationWindow {
                         color: root.textColor
                         font.pixelSize: 13
                         verticalAlignment: Text.AlignVCenter
+                        inputMethodHints: Qt.ImhNoPredictiveText
                         
                         Text {
                             visible: !parent.text
@@ -1612,6 +1631,7 @@ ApplicationWindow {
                         color: root.textColor
                         font.pixelSize: 13
                         verticalAlignment: Text.AlignVCenter
+                        inputMethodHints: Qt.ImhNoPredictiveText
                         
                         Text {
                             visible: !parent.text
