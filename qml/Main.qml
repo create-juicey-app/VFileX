@@ -53,6 +53,13 @@ ApplicationWindow {
     readonly property color buttonHover: "#4a4a4a"
     readonly property int radius: 6
     
+    // Animation settings - smooth & snappy
+    readonly property int animDurationFast: 120      // Quick micro-interactions
+    readonly property int animDurationNormal: 200    // Standard transitions
+    readonly property int animDurationSlow: 350      // Dialogs, major transitions
+    readonly property int animEasing: Easing.OutCubic  // Smooth deceleration
+    readonly property int animEasingBounce: Easing.OutBack  // Slight overshoot for playfulness
+
     // Application controller
     SuperVtfApp {
         id: app
@@ -261,7 +268,8 @@ ApplicationWindow {
                 verticalAlignment: Text.AlignVCenter
             }
             background: Rectangle {
-                color: menuBarItem.highlighted ? root.accent : "transparent"
+                color: menuBarItem.highlighted ? root.accent : (menuBarItem.hovered ? root.buttonHover : "transparent")
+                Behavior on color { ColorAnimation { duration: root.animDurationFast } }
             }
         }
         
@@ -400,6 +408,7 @@ ApplicationWindow {
                             background: Rectangle { 
                                 color: shaderCombo.pressed ? "#2a2d2e" : (shaderCombo.hovered ? "#323232" : "transparent")
                                 radius: 4
+                                Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                             }
                             
                             contentItem: Text {
@@ -470,6 +479,7 @@ ApplicationWindow {
                                 
                                 background: Rectangle { 
                                     color: shaderDelegate.highlighted ? root.accent : (shaderDelegate.hovered ? "#3c3c3c" : "transparent")
+                                    Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                                 }
                                 highlighted: shaderCombo.highlightedIndex === index
                             }
@@ -479,6 +489,17 @@ ApplicationWindow {
                                 width: shaderCombo.width
                                 implicitHeight: Math.min(contentItem.implicitHeight + 2, 300)
                                 padding: 1
+                                
+                                // Smooth fucking enter/exit animation
+                                enter: Transition {
+                                    ParallelAnimation {
+                                        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: root.animDurationFast; easing.type: root.animEasing }
+                                        NumberAnimation { property: "y"; from: shaderCombo.height - 8; to: shaderCombo.height; duration: root.animDurationFast; easing.type: root.animEasing }
+                                    }
+                                }
+                                exit: Transition {
+                                    NumberAnimation { property: "opacity"; from: 1; to: 0; duration: root.animDurationFast; easing.type: Easing.InCubic }
+                                }
                                 
                                 contentItem: ListView {
                                     clip: true
@@ -564,9 +585,19 @@ ApplicationWindow {
                             property bool isCollapsed: root.isCategoryCollapsed(section)
                             
                             MouseArea {
+                                id: sectionMouseArea
                                 anchors.fill: parent
+                                hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: root.toggleCategory(section)
+                            }
+                            
+                            // Hover effect
+                            Rectangle {
+                                anchors.fill: parent
+                                color: sectionMouseArea.containsMouse ? Qt.rgba(1,1,1,0.03) : "transparent"
+                                radius: 4
+                                Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                             }
                             
                             RowLayout {
@@ -577,9 +608,13 @@ ApplicationWindow {
                                 spacing: 6
                                 
                                 Text {
-                                    text: root.isCategoryCollapsed(section) ? "▶" : "▼"
+                                    text: "▶"
                                     color: root.textDim
                                     font.pixelSize: 10
+                                    
+                                    // Smooth rotation for expand/collapse icon
+                                    rotation: root.isCategoryCollapsed(section) ? 0 : 90
+                                    Behavior on rotation { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
                                 }
                                 
                                 Text {
@@ -611,6 +646,12 @@ ApplicationWindow {
                             border.color: root.panelBorder
                             border.width: visible ? 1 : 0
                             clip: true
+                            
+                            // Smooth expand/collapse animation
+                            Behavior on height { NumberAnimation { duration: root.animDurationNormal; easing.type: root.animEasing } }
+                            
+                            // Smooth hover effect
+                            Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                             
                             // Store model data in delegate-local properties
                             property string pName: model.paramName || ""
@@ -1659,6 +1700,20 @@ ApplicationWindow {
         width: 400
         padding: 0
         
+        // Smooth enter/exit animations
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: root.animDurationNormal; easing.type: root.animEasing }
+                NumberAnimation { property: "scale"; from: 0.9; to: 1; duration: root.animDurationNormal; easing.type: root.animEasingBounce }
+            }
+        }
+        exit: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 1; to: 0; duration: root.animDurationFast; easing.type: Easing.InCubic }
+                NumberAnimation { property: "scale"; from: 1; to: 0.95; duration: root.animDurationFast; easing.type: Easing.InCubic }
+            }
+        }
+        
         onOpened: newShaderCombo.setDefaultShader()
         
         background: Rectangle {
@@ -1851,10 +1906,16 @@ ApplicationWindow {
                     spacing: 12
                     
                     Rectangle {
+                        id: cancelNewBtn
                         width: 90
                         height: 32
                         radius: 4
                         color: cancelNewMouse.containsMouse ? root.buttonHover : root.buttonBg
+                        
+                        // Smooth hover animation
+                        scale: cancelNewMouse.pressed ? 0.95 : 1.0
+                        Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
+                        Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                         
                         Text {
                             anchors.centerIn: parent
@@ -1873,10 +1934,16 @@ ApplicationWindow {
                     }
                     
                     Rectangle {
+                        id: createNewBtn
                         width: 90
                         height: 32
                         radius: 4
                         color: okNewMouse.containsMouse ? "#1177bb" : root.accent
+                        
+                        // Smooth hover animation
+                        scale: okNewMouse.pressed ? 0.95 : (okNewMouse.containsMouse ? 1.03 : 1.0)
+                        Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
+                        Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                         
                         Text {
                             anchors.centerIn: parent
@@ -1909,6 +1976,20 @@ ApplicationWindow {
         anchors.centerIn: parent
         width: 400
         padding: 0
+        
+        // Smooth enter/exit animations
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: root.animDurationNormal; easing.type: root.animEasing }
+                NumberAnimation { property: "scale"; from: 0.9; to: 1; duration: root.animDurationNormal; easing.type: root.animEasingBounce }
+            }
+        }
+        exit: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 1; to: 0; duration: root.animDurationFast; easing.type: Easing.InCubic }
+                NumberAnimation { property: "scale"; from: 1; to: 0.95; duration: root.animDurationFast; easing.type: Easing.InCubic }
+            }
+        }
         
         background: Rectangle {
             color: root.panelBg
@@ -2142,7 +2223,7 @@ ApplicationWindow {
                         }
                         
                         Text {
-                            text: "Version 0.7.0"
+                            text: "Version 0.8.0"
                             color: "#88ccff"
                             font.pixelSize: 12
                         }
@@ -2167,36 +2248,7 @@ ApplicationWindow {
                     lineHeight: 1.4
                 }
                 
-                // Features
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: featuresCol.height + 16
-                    color: "#1e1e1e"
-                    radius: 6
-                    
-                    Column {
-                        id: featuresCol
-                        anchors.fill: parent
-                        anchors.margins: 8
-                        spacing: 4
-                        
-                        Text {
-                            text: "• Edit VMT shader parameters"
-                            color: root.textColor
-                            font.pixelSize: 12
-                        }
-                        Text {
-                            text: "• Preview VTF textures"
-                            color: root.textColor
-                            font.pixelSize: 12
-                        }
-                        Text {
-                            text: "• Cross-platform (Windows, Linux, macOS)"
-                            color: root.textColor
-                            font.pixelSize: 12
-                        }
-                    }
-                }
+                
                 
                 // Divider
                 Rectangle {
@@ -2290,6 +2342,20 @@ ApplicationWindow {
         width: 500
         padding: 0
         closePolicy: Popup.NoAutoClose
+        
+        // Smooth enter/exit animations
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: root.animDurationSlow; easing.type: root.animEasing }
+                NumberAnimation { property: "scale"; from: 0.9; to: 1; duration: root.animDurationSlow; easing.type: root.animEasingBounce }
+            }
+        }
+        exit: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 1; to: 0; duration: root.animDurationNormal; easing.type: Easing.InCubic }
+                NumberAnimation { property: "scale"; from: 1; to: 0.95; duration: root.animDurationNormal; easing.type: Easing.InCubic }
+            }
+        }
         
         // Show on first run
         Component.onCompleted: {
@@ -2397,11 +2463,17 @@ ApplicationWindow {
                         spacing: 4
                         
                         delegate: Rectangle {
+                            id: gameItemRect
                             width: gameListView.width
                             height: 52
                             color: welcomeDialog.selectedIndex === index ? root.accent : 
                                    (gameMouseArea.containsMouse ? root.buttonHover : "transparent")
                             radius: 6
+                            
+                            // Smooth hover animations
+                            scale: gameMouseArea.pressed ? 0.98 : 1.0
+                            Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
+                            Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                             
                             RowLayout {
                                 anchors.fill: parent
@@ -2573,12 +2645,17 @@ ApplicationWindow {
                     spacing: 12
                     
                     Button {
+                        id: skipButton
                         text: "Skip for Now"
                         flat: true
                         onClicked: {
                             app.complete_first_run()
                             welcomeDialog.close()
                         }
+                        
+                        // Smooth hover animation
+                        scale: hovered ? 1.02 : (pressed ? 0.98 : 1.0)
+                        Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
                         
                         contentItem: Text {
                             text: parent.text
@@ -2589,12 +2666,14 @@ ApplicationWindow {
                         }
                         
                         background: Rectangle {
-                            color: parent.hovered ? root.buttonHover : "transparent"
+                            color: skipButton.hovered ? root.buttonHover : "transparent"
                             radius: 6
+                            Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                         }
                     }
                     
                     Button {
+                        id: continueButton
                         text: "Continue"
                         enabled: welcomeDialog.selectedIndex >= 0 || manualPathField.text.length > 0
                         onClicked: {
@@ -2606,20 +2685,25 @@ ApplicationWindow {
                             welcomeDialog.close()
                         }
                         
+                        // Smooth hover animation
+                        scale: hovered ? 1.03 : (pressed ? 0.97 : 1.0)
+                        Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
+                        
                         contentItem: Text {
-                            text: parent.text
+                            text: continueButton.text
                             font.pixelSize: 13
                             font.bold: true
-                            color: parent.enabled ? "white" : root.textDim
+                            color: continueButton.enabled ? "white" : root.textDim
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
                         
                         background: Rectangle {
-                            color: parent.enabled 
-                                ? (parent.hovered ? root.accentHover : root.accent)
+                            color: continueButton.enabled 
+                                ? (continueButton.hovered ? root.accentHover : root.accent)
                                 : root.buttonBg
                             radius: 6
+                            Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                         }
                     }
                 }
@@ -2653,6 +2737,20 @@ ApplicationWindow {
         property real hue: 0
         property real saturation: 1
         property real brightness: 1
+        
+        // Smooth enter/exit animations
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: root.animDurationNormal; easing.type: root.animEasing }
+                NumberAnimation { property: "scale"; from: 0.9; to: 1; duration: root.animDurationNormal; easing.type: root.animEasingBounce }
+            }
+        }
+        exit: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 1; to: 0; duration: root.animDurationFast; easing.type: Easing.InCubic }
+                NumberAnimation { property: "scale"; from: 1; to: 0.95; duration: root.animDurationFast; easing.type: Easing.InCubic }
+            }
+        }
         
         onCurrentColorChanged: {
             hue = currentColor.hsvHue >= 0 ? currentColor.hsvHue : 0
@@ -3018,6 +3116,20 @@ ApplicationWindow {
         modal: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         
+        // Smooth enter/exit animations
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: root.animDurationNormal; easing.type: root.animEasing }
+                NumberAnimation { property: "scale"; from: 0.95; to: 1; duration: root.animDurationNormal; easing.type: root.animEasingBounce }
+            }
+        }
+        exit: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 1; to: 0; duration: root.animDurationFast; easing.type: Easing.InCubic }
+                NumberAnimation { property: "scale"; from: 1; to: 0.98; duration: root.animDurationFast; easing.type: Easing.InCubic }
+            }
+        }
+        
         background: Rectangle {
             color: root.panelBg
             border.color: root.panelBorder
@@ -3030,6 +3142,7 @@ ApplicationWindow {
         property var filteredTextures: []
         property string selectedCategory: "all"
         property var categories: ["all", "custom", "brick", "concrete", "metal", "wood", "glass", "nature", "decals", "models", "effects", "other"]
+        property bool isLoading: false
         
         onOpened: {
             loadTextures()
@@ -3037,6 +3150,7 @@ ApplicationWindow {
         }
         
         function loadTextures() {
+            isLoading = true
             // Get textures from VPK
             var vpkTextures = app.get_texture_completions("", 5000)
             allTextures = []
@@ -3072,6 +3186,7 @@ ApplicationWindow {
                 addedPaths[customPath.toLowerCase()] = true
             }
             
+            isLoading = false
             filterTextures()
         }
         
@@ -3228,12 +3343,18 @@ ApplicationWindow {
                     model: globalTextureBrowser.categories
                     
                     Rectangle {
+                        id: categoryRect
                         width: categoryText.implicitWidth + 16
                         height: 28
                         radius: 4
                         color: globalTextureBrowser.selectedCategory === modelData ? root.accent : (categoryMouse.containsMouse ? root.buttonHover : root.buttonBg)
                         border.color: globalTextureBrowser.selectedCategory === modelData ? root.accent : root.inputBorder
                         border.width: 1
+                        
+                        // Smooth hover animations
+                        scale: categoryMouse.pressed ? 0.95 : (categoryMouse.containsMouse ? 1.02 : 1.0)
+                        Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
+                        Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                         
                         Text {
                             id: categoryText
@@ -3328,28 +3449,38 @@ ApplicationWindow {
                 }
             }
             
-            // Texture grid
-            ScrollView {
+            // Texture grid with loading overlay
+            Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                clip: true
                 
-                GridView {
-                    id: textureGrid
-                    cellWidth: 120
-                    cellHeight: 140
+                ScrollView {
+                    anchors.fill: parent
+                    clip: true
                     
-                    delegate: Rectangle {
-                        width: 115
-                        height: 135
-                        color: gridItemMouse.containsMouse ? root.buttonHover : "transparent"
-                        border.color: globalTextureBrowser.selectedTexture === modelData.path ? root.accent : (gridItemMouse.containsMouse ? root.accent : "transparent")
-                        border.width: globalTextureBrowser.selectedTexture === modelData.path ? 2 : 1
-                        radius: 6
+                    GridView {
+                        id: textureGrid
+                        cellWidth: 120
+                        cellHeight: 140
                         
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 6
+                        delegate: Rectangle {
+                            id: gridItemRect
+                            width: 115
+                            height: 135
+                            color: gridItemMouse.containsMouse ? root.buttonHover : "transparent"
+                            border.color: globalTextureBrowser.selectedTexture === modelData.path ? root.accent : (gridItemMouse.containsMouse ? root.accent : "transparent")
+                            border.width: globalTextureBrowser.selectedTexture === modelData.path ? 2 : 1
+                            radius: 6
+                            
+                            // Smooth hover animations
+                            scale: gridItemMouse.containsMouse ? 1.02 : 1.0
+                            Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
+                            Behavior on color { ColorAnimation { duration: root.animDurationFast } }
+                            Behavior on border.color { ColorAnimation { duration: root.animDurationFast } }
+                            
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: 6
                             spacing: 4
                             
                             // Texture preview
@@ -3390,6 +3521,10 @@ ApplicationWindow {
                                     source: parent.thumbnailSource
                                     asynchronous: true
                                     cache: true
+                                    
+                                    // Smooth fade-in when loaded
+                                    opacity: status === Image.Ready ? 1 : 0
+                                    Behavior on opacity { NumberAnimation { duration: root.animDurationNormal; easing.type: root.animEasing } }
                                     
                                     // Loading spinner - waiting for thumbnail request
                                     Item {
@@ -3565,6 +3700,62 @@ ApplicationWindow {
                         }
                     }
                 }
+                }
+                
+                // Loading overlay
+                Rectangle {
+                    anchors.fill: parent
+                    color: Qt.rgba(0, 0, 0, 0.7)
+                    visible: globalTextureBrowser.isLoading
+                    opacity: globalTextureBrowser.isLoading ? 1.0 : 0.0
+                    
+                    Behavior on opacity { NumberAnimation { duration: root.animDurationNormal } }
+                    
+                    Column {
+                        anchors.centerIn: parent
+                        spacing: 16
+                        
+                        // Animated loading spinner
+                        Canvas {
+                            id: loadingSpinner
+                            width: 48
+                            height: 48
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            
+                            property real angle: 0
+                            
+                            NumberAnimation on angle {
+                                from: 0
+                                to: 360
+                                duration: 1000
+                                loops: Animation.Infinite
+                                running: globalTextureBrowser.isLoading
+                            }
+                            
+                            onAngleChanged: requestPaint()
+                            
+                            onPaint: {
+                                var ctx = getContext("2d")
+                                ctx.reset()
+                                ctx.strokeStyle = root.accent
+                                ctx.lineWidth = 4
+                                ctx.lineCap = "round"
+                                ctx.beginPath()
+                                var startAngle = (angle - 90) * Math.PI / 180
+                                var endAngle = (angle + 180) * Math.PI / 180
+                                ctx.arc(width/2, height/2, 18, startAngle, endAngle)
+                                ctx.stroke()
+                            }
+                        }
+                        
+                        Text {
+                            text: "Loading textures..."
+                            color: root.textColor
+                            font.pixelSize: 14
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
+                    }
+                }
             }
             
             // Footer with actions
@@ -3590,10 +3781,16 @@ ApplicationWindow {
                 Item { Layout.fillWidth: true }
                 
                 Rectangle {
+                    id: cancelBtn
                     width: 80
                     height: 30
                     radius: 4
                     color: cancelMouse.containsMouse ? root.buttonHover : root.buttonBg
+                    
+                    // Smooth hover animation
+                    scale: cancelMouse.pressed ? 0.95 : 1.0
+                    Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
+                    Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                     
                     Text {
                         anchors.centerIn: parent
@@ -3612,11 +3809,17 @@ ApplicationWindow {
                 }
                 
                 Rectangle {
+                    id: selectBtn
                     width: 80
                     height: 30
                     radius: 4
                     color: selectMouse.containsMouse ? root.accentHover : root.accent
                     opacity: globalTextureBrowser.selectedTexture ? 1.0 : 0.5
+                    
+                    // Smooth hover animation
+                    scale: selectMouse.pressed ? 0.95 : (selectMouse.containsMouse && globalTextureBrowser.selectedTexture ? 1.03 : 1.0)
+                    Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
+                    Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                     
                     Text {
                         anchors.centerIn: parent

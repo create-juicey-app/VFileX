@@ -21,11 +21,20 @@ Item {
     readonly property color toggleOn: "#4ec9b0"
     readonly property color toggleOff: "#5a5a5a"
     
+    // Animation settings
+    readonly property int animDurationFast: 120
+    readonly property int animDurationNormal: 200
+    readonly property int animEasing: Easing.OutCubic
+    
     signal valueChanged(string name, string value)
     signal removeClicked(string name)
     
     implicitWidth: parent ? parent.width : 300
     implicitHeight: expanded ? contentColumn.implicitHeight : headerRow.implicitHeight
+    
+    Behavior on implicitHeight {
+        NumberAnimation { duration: root.animDurationNormal; easing.type: root.animEasing }
+    }
     
     ColumnLayout {
         id: contentColumn
@@ -56,12 +65,22 @@ Item {
                     border.color: enableCheckbox.checked ? accent : inputBorder
                     border.width: 1
                     
+                    Behavior on color { ColorAnimation { duration: root.animDurationFast } }
+                    Behavior on border.color { ColorAnimation { duration: root.animDurationFast } }
+                    
+                    scale: enableCheckbox.pressed ? 0.9 : 1.0
+                    Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
+                    
                     Text {
                         anchors.centerIn: parent
                         text: "\u2713"
                         color: "white"
                         font.pixelSize: 12
                         visible: enableCheckbox.checked
+                        opacity: enableCheckbox.checked ? 1.0 : 0.0
+                        scale: enableCheckbox.checked ? 1.0 : 0.5
+                        Behavior on opacity { NumberAnimation { duration: root.animDurationFast } }
+                        Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: Easing.OutBack } }
                     }
                 }
             }
@@ -93,6 +112,9 @@ Item {
             Layout.leftMargin: 24
             visible: expanded
             active: expanded
+            opacity: expanded ? 1.0 : 0.0
+            
+            Behavior on opacity { NumberAnimation { duration: root.animDurationFast } }
             
             sourceComponent: {
                 switch (parameterEntry.data_type.toLowerCase()) {
@@ -138,6 +160,8 @@ Item {
                 radius: 11
                 color: boolSwitch.checked ? toggleOn : toggleOff
                 
+                Behavior on color { ColorAnimation { duration: root.animDurationFast } }
+                
                 Rectangle {
                     x: boolSwitch.checked ? parent.width - width - 3 : 3
                     y: 3
@@ -147,7 +171,7 @@ Item {
                     color: "white"
                     
                     Behavior on x {
-                        NumberAnimation { duration: 150 }
+                        NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing }
                     }
                 }
             }
@@ -158,6 +182,14 @@ Item {
                 font.pixelSize: 12
                 verticalAlignment: Text.AlignVCenter
                 leftPadding: boolSwitch.indicator.width + 8
+                
+                Behavior on text { 
+                    SequentialAnimation {
+                        NumberAnimation { target: boolSwitch.contentItem; property: "opacity"; to: 0; duration: 60 }
+                        PropertyAction { }
+                        NumberAnimation { target: boolSwitch.contentItem; property: "opacity"; to: 1; duration: 60 }
+                    }
+                }
             }
         }
     }
@@ -187,6 +219,8 @@ Item {
                     border.color: intSpinBox.activeFocus ? accent : inputBorder
                     border.width: 1
                     radius: 3
+                    
+                    Behavior on border.color { ColorAnimation { duration: root.animDurationFast } }
                 }
                 
                 contentItem: TextInput {
@@ -259,6 +293,8 @@ Item {
                         height: parent.height
                         color: accent
                         radius: 2
+                        
+                        Behavior on width { NumberAnimation { duration: 50 } }
                     }
                 }
                 
@@ -271,6 +307,10 @@ Item {
                     color: intSlider.pressed ? Qt.lighter(accent, 1.2) : accent
                     border.color: Qt.darker(accent, 1.1)
                     border.width: 1
+                    
+                    scale: intSlider.pressed ? 1.2 : (intSlider.hovered ? 1.1 : 1.0)
+                    Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
+                    Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                 }
             }
         }
@@ -333,6 +373,8 @@ Item {
                         height: parent.height
                         color: accent
                         radius: 2
+                        
+                        Behavior on width { NumberAnimation { duration: 50 } }
                     }
                 }
                 
@@ -345,6 +387,10 @@ Item {
                     color: floatSlider.pressed ? Qt.lighter(accent, 1.2) : accent
                     border.color: Qt.darker(accent, 1.1)
                     border.width: 1
+                    
+                    scale: floatSlider.pressed ? 1.2 : (floatSlider.hovered ? 1.1 : 1.0)
+                    Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
+                    Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                 }
             }
         }
@@ -361,8 +407,10 @@ Item {
                 Layout.preferredWidth: 48
                 Layout.preferredHeight: 28
                 radius: 3
-                border.color: inputBorder
+                border.color: colorPreviewMouse.containsMouse ? accent : inputBorder
                 border.width: 1
+                
+                Behavior on border.color { ColorAnimation { duration: root.animDurationFast } }
                 
                 property color parsedColor: {
                     var val = parameterEntry.value
@@ -391,10 +439,16 @@ Item {
                 }
                 
                 color: parsedColor
+                Behavior on color { ColorAnimation { duration: root.animDurationNormal } }
+                
+                scale: colorPreviewMouse.pressed ? 0.95 : (colorPreviewMouse.containsMouse ? 1.05 : 1.0)
+                Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
                 
                 MouseArea {
+                    id: colorPreviewMouse
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
+                    hoverEnabled: true
                     onClicked: colorDialog.open()
                 }
             }
@@ -414,6 +468,8 @@ Item {
                     border.color: colorTextField.activeFocus ? accent : inputBorder
                     border.width: 1
                     radius: 3
+                    
+                    Behavior on border.color { ColorAnimation { duration: root.animDurationFast } }
                 }
                 
                 color: textPrimary
@@ -750,6 +806,12 @@ Item {
                     border.width: 1
                     radius: 3
                     
+                    Behavior on color { ColorAnimation { duration: root.animDurationFast } }
+                    Behavior on border.color { ColorAnimation { duration: root.animDurationFast } }
+                    
+                    scale: previewMouseArea.pressed ? 0.95 : (previewMouseArea.containsMouse ? 1.05 : 1.0)
+                    Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
+                    
                     // Thumbnail source from texture provider
                     property string thumbnailSource: ""
                     
@@ -826,6 +888,8 @@ Item {
                         border.color: textureField.activeFocus ? accent : inputBorder
                         border.width: 1
                         radius: 3
+                        
+                        Behavior on border.color { ColorAnimation { duration: root.animDurationFast } }
                     }
                     
                     // Ghost text (shown behind the input)
@@ -1000,6 +1064,7 @@ Item {
                 
                 // Browse button
                 Button {
+                    id: browseBtn
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28
                     text: "..."
@@ -1014,11 +1079,17 @@ Item {
                     }
                     
                     background: Rectangle {
-                        color: parent.pressed ? hoverBackground : inputBackground
-                        border.color: inputBorder
+                        color: browseBtn.pressed ? hoverBackground : (browseBtn.hovered ? "#363636" : inputBackground)
+                        border.color: browseBtn.hovered ? accent : inputBorder
                         border.width: 1
                         radius: 3
+                        
+                        Behavior on color { ColorAnimation { duration: root.animDurationFast } }
+                        Behavior on border.color { ColorAnimation { duration: root.animDurationFast } }
                     }
+                    
+                    scale: browseBtn.pressed ? 0.95 : 1.0
+                    Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
                     
                     contentItem: Text {
                         text: parent.text

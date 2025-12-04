@@ -11,6 +11,13 @@ Item {
     property real maxZoom: 10.0
     property int previewVersion: 0  // Increment to force image reload
     
+    // Animation settings (matching Main.qml)
+    readonly property int animDurationFast: 120
+    readonly property int animDurationNormal: 200
+    readonly property int animDurationSlow: 300
+    
+    // Note: Zoom is intentionally not animated - changes are applied instantly
+    
     // Colors
     readonly property color textColor: "#e0e0e0"
     readonly property color textDim: "#888888"
@@ -98,17 +105,29 @@ Item {
         zoom = Math.max(zoom / 1.25, minZoom)
     }
     function resetZoom() { 
+        imageArea.animatePan = true
         zoom = 1.0
         imageArea.panX = 0
         imageArea.panY = 0
+        // Disable pan animation after a short delay
+        panAnimDisableTimer.restart()
     }
     function fitToView() {
         if (!textureProvider || !textureProvider.is_loaded) return
+        imageArea.animatePan = true
         var scaleX = imageArea.width / textureProvider.texture_width
         var scaleY = imageArea.height / textureProvider.texture_height
         zoom = Math.min(scaleX, scaleY, 1.0)
         imageArea.panX = 0
         imageArea.panY = 0
+        panAnimDisableTimer.restart()
+    }
+    
+    // Timer to disable pan animation after programmatic reset
+    Timer {
+        id: panAnimDisableTimer
+        interval: 250
+        onTriggered: imageArea.animatePan = false
     }
     
     // Checkerboard background
@@ -137,9 +156,20 @@ Item {
         anchors.bottomMargin: 36
         clip: true
         
-        // Panning state
+        // Panning state with smooth animation
         property real panX: 0
         property real panY: 0
+        
+        // Smooth pan reset animation (only for programmatic resets)
+        property bool animatePan: false
+        Behavior on panX { 
+            enabled: imageArea.animatePan
+            NumberAnimation { duration: root.animDurationNormal; easing.type: Easing.OutCubic } 
+        }
+        Behavior on panY { 
+            enabled: imageArea.animatePan
+            NumberAnimation { duration: root.animDurationNormal; easing.type: Easing.OutCubic } 
+        }
         
         Image {
             id: previewImage
@@ -157,6 +187,10 @@ Item {
             mipmap: root.zoom < 1
             visible: textureProvider && textureProvider.is_loaded
             cache: false
+            
+            // Smooth fade-in when image loads
+            opacity: status === Image.Ready ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: root.animDurationNormal; easing.type: Easing.OutCubic } }
             
             source: {
                 if (textureProvider && textureProvider.is_loaded && root.previewVersion >= 0) {
@@ -308,6 +342,12 @@ Item {
         radius: 6
         z: 100
         
+        // Smooth appear/disappear animation
+        opacity: root.showColorPicker ? 1 : 0
+        scale: root.showColorPicker ? 1 : 0.9
+        Behavior on opacity { NumberAnimation { duration: root.animDurationFast; easing.type: Easing.OutCubic } }
+        Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: Easing.OutCubic } }
+        
         RowLayout {
             anchors.fill: parent
             anchors.margins: 8
@@ -433,10 +473,16 @@ Item {
                 }
                 
                 Rectangle {
+                    id: mipDownBtn
                     width: 28
                     height: 24
                     radius: 4
                     color: mipDownMouse.containsMouse ? root.buttonHover : root.buttonBg
+                    
+                    // Smooth hover animation
+                    scale: mipDownMouse.pressed ? 0.92 : 1.0
+                    Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: Easing.OutCubic } }
+                    Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                     
                     Text {
                         anchors.centerIn: parent
@@ -466,10 +512,16 @@ Item {
                 }
                 
                 Rectangle {
+                    id: mipUpBtn
                     width: 28
                     height: 24
                     radius: 4
                     color: mipUpMouse.containsMouse ? root.buttonHover : root.buttonBg
+                    
+                    // Smooth hover animation
+                    scale: mipUpMouse.pressed ? 0.92 : 1.0
+                    Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: Easing.OutCubic } }
+                    Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                     
                     Text {
                         anchors.centerIn: parent
@@ -501,10 +553,16 @@ Item {
                 
                 // Zoom Out Button
                 Rectangle {
+                    id: zoomOutBtn
                     width: 32
                     height: 28
                     radius: 4
                     color: zoomOutMouse.containsMouse ? root.buttonHover : root.buttonBg
+                    
+                    // Smooth hover animation
+                    scale: zoomOutMouse.pressed ? 0.9 : 1.0
+                    Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: Easing.OutCubic } }
+                    Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                     
                     Text {
                         anchors.centerIn: parent
@@ -525,10 +583,16 @@ Item {
                 
                 // Zoom Percentage
                 Rectangle {
+                    id: zoomResetBtn
                     width: 60
                     height: 28
                     radius: 4
                     color: zoomResetMouse.containsMouse ? root.buttonHover : root.buttonBg
+                    
+                    // Smooth hover animation
+                    scale: zoomResetMouse.pressed ? 0.95 : 1.0
+                    Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: Easing.OutCubic } }
+                    Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                     
                     Text {
                         anchors.centerIn: parent
@@ -549,10 +613,16 @@ Item {
                 
                 // Zoom In Button
                 Rectangle {
+                    id: zoomInBtn
                     width: 32
                     height: 28
                     radius: 4
                     color: zoomInMouse.containsMouse ? root.buttonHover : root.buttonBg
+                    
+                    // Smooth hover animation
+                    scale: zoomInMouse.pressed ? 0.9 : 1.0
+                    Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: Easing.OutCubic } }
+                    Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                     
                     Text {
                         anchors.centerIn: parent
