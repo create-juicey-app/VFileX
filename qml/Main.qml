@@ -3232,8 +3232,8 @@ ApplicationWindow {
         
         function loadTextures() {
             isLoading = true
-            // Get textures from VPK
-            var vpkTextures = app.get_texture_completions("", 5000)
+            // Get ALL textures from VPK (no limit)
+            var vpkTextures = app.get_texture_completions("", -1)
             allTextures = []
             
             // Track paths we've already added to avoid duplicates
@@ -3250,8 +3250,8 @@ ApplicationWindow {
                 addedPaths[path.toLowerCase()] = true
             }
             
-            // Get custom textures from disk
-            var customTextures = app.get_custom_textures(2000)
+            // Get ALL custom textures from disk (no limit)
+            var customTextures = app.get_custom_textures(-1)
             for (var j = 0; j < customTextures.length; j++) {
                 var customPath = customTextures[j]
                 // Skip if already added from VPK
@@ -3306,9 +3306,6 @@ ApplicationWindow {
                 }
                 
                 filteredTextures.push(tex)
-                
-                // Limit results for performance
-                if (filteredTextures.length >= 500) break
             }
             
             textureGrid.model = filteredTextures

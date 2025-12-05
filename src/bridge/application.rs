@@ -745,6 +745,9 @@ auto_save = {}
             return QStringList::default();
         }
         
+        // Handle unlimited (-1) or convert to usize
+        let limit = if max_results < 0 { usize::MAX } else { max_results as usize };
+        
         let mut completions: Vec<String> = Vec::new();
         let game_path = std::path::Path::new(&materials_root);
         
@@ -752,19 +755,19 @@ auto_save = {}
         // First, search disk (materials folder)
         let disk_materials = PathBuf::from(&materials_root).join("materials");
         if disk_materials.exists() && !prefix_str.is_empty() {
-            self.collect_disk_completions(&disk_materials, &prefix_str, &mut completions, max_results as usize);
+            self.collect_disk_completions(&disk_materials, &prefix_str, &mut completions, limit);
         }
         
         // Also check if materials_root itself is a materials folder
         let direct_search = PathBuf::from(&materials_root);
         if direct_search.exists() && !direct_search.ends_with("materials") && !prefix_str.is_empty() {
-            self.collect_disk_completions(&direct_search, &prefix_str, &mut completions, max_results as usize);
+            self.collect_disk_completions(&direct_search, &prefix_str, &mut completions, limit);
         }
         
         // Search VPK archives
         let vpk_files = VPK_MANAGER.list_files(game_path, Some("vtf"));
         for file in vpk_files {
-            if completions.len() >= max_results as usize {
+            if completions.len() >= limit {
                 break;
             }
             
@@ -784,7 +787,9 @@ auto_save = {}
         
         // Sort for consistent ordering
         completions.sort();
-        completions.truncate(max_results as usize);
+        if limit < usize::MAX {
+            completions.truncate(limit);
+        }
         
         // Convert to QStringList
         let strings: Vec<cxx_qt_lib::QString> = completions
@@ -895,24 +900,29 @@ auto_save = {}
             return QStringList::default();
         }
         
+        // Handle unlimited (-1) or convert to usize
+        let limit = if max_results < 0 { usize::MAX } else { max_results as usize };
+        
         let mut custom_textures: Vec<String> = Vec::new();
         
         // Check materials folder under game directory
         let disk_materials = PathBuf::from(&materials_root).join("materials");
         if disk_materials.exists() {
-            self.collect_all_disk_textures(&disk_materials, &disk_materials, &mut custom_textures, max_results as usize);
+            self.collect_all_disk_textures(&disk_materials, &disk_materials, &mut custom_textures, limit);
         }
         
         // Also check if materials_root itself contains textures directly
         let direct_path = PathBuf::from(&materials_root);
         if direct_path.exists() && !direct_path.ends_with("materials") {
             // Check for a nested materials folder structure
-            self.collect_all_disk_textures(&direct_path, &direct_path, &mut custom_textures, max_results as usize);
+            self.collect_all_disk_textures(&direct_path, &direct_path, &mut custom_textures, limit);
         }
         
         // Sort for consistent ordering
         custom_textures.sort();
-        custom_textures.truncate(max_results as usize);
+        if limit < usize::MAX {
+            custom_textures.truncate(limit);
+        }
         
         // Convert to QStringList
         let strings: Vec<cxx_qt_lib::QString> = custom_textures
