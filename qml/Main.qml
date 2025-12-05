@@ -60,6 +60,14 @@ ApplicationWindow {
     readonly property int animEasing: Easing.OutCubic  // Smooth deceleration
     readonly property int animEasingBounce: Easing.OutBack  // Slight overshoot for playfulness
 
+    // Notification system
+    function showNotification(message, bgColor) {
+        notificationText.text = message
+        notificationBg.color = bgColor || root.accent
+        notificationPopup.open()
+        notificationTimer.restart()
+    }
+
     // Application controller
     VFileXApp {
         id: app
@@ -303,6 +311,11 @@ ApplicationWindow {
                     globalTextureBrowser.open()
                 }
             }
+            MenuSeparator {}
+            Action {
+                text: "Image to VTF Converter..."
+                onTriggered: imageToVtfDialog.open()
+            }
         }
         
         Menu {
@@ -317,7 +330,12 @@ ApplicationWindow {
             }
             Action {
                 text: "Browse Materials Folder..."
-                onTriggered: browseMaterialsDialog.open()
+                onTriggered: {
+                    var path = app.browse_folder_native("Select Materials Folder")
+                    if (path.length > 0) {
+                        app.set_materials_root_path(path)
+                    }
+                }
             }
             MenuSeparator {}
             Menu {
@@ -330,6 +348,71 @@ ApplicationWindow {
             title: "Help"
             Action { text: "About VFileX"; onTriggered: aboutDialog.open() }
         }
+    }
+    
+    // ===== NOTIFICATION POPUP =====
+    Popup {
+        id: notificationPopup
+        x: (root.width - width) / 2
+        y: root.height - height - 40
+        width: Math.min(400, notificationText.implicitWidth + 48)
+        height: 48
+        padding: 0
+        closePolicy: Popup.NoAutoClose
+        
+        background: Rectangle {
+            id: notificationBg
+            color: "#4CAF50"
+            radius: 8
+            border.width: 1
+            border.color: Qt.lighter(color, 1.2)
+            
+            // Drop shadow
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -2
+                z: -1
+                color: "transparent"
+                radius: 10
+                border.width: 4
+                border.color: Qt.rgba(0, 0, 0, 0.3)
+            }
+        }
+        
+        contentItem: Rectangle {
+            color: "transparent"
+            
+            Text {
+                id: notificationText
+                anchors.centerIn: parent
+                text: ""
+                color: "white"
+                font.pixelSize: 13
+                font.bold: true
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+        }
+        
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200 }
+                NumberAnimation { property: "y"; from: root.height; to: root.height - notificationPopup.height - 40; duration: 200; easing.type: Easing.OutCubic }
+            }
+        }
+        
+        exit: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 200 }
+                NumberAnimation { property: "y"; to: root.height; duration: 200; easing.type: Easing.InCubic }
+            }
+        }
+    }
+    
+    Timer {
+        id: notificationTimer
+        interval: 3000
+        onTriggered: notificationPopup.close()
     }
     
     // ===== MAIN LAYOUT =====
@@ -2624,7 +2707,14 @@ ApplicationWindow {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: browseMaterialsDialog.open()
+                        onClicked: {
+                            var path = app.browse_folder_native("Select Materials Folder")
+                            if (path.length > 0) {
+                                app.set_materials_root_path(path)
+                                manualPathField.text = path
+                                welcomeDialog.selectedIndex = -1
+                            }
+                        }
                     }
                 }
                 
@@ -2792,15 +2882,751 @@ ApplicationWindow {
         }
     }
     
-    // Browse materials folder dialog
-    FolderDialog {
-        id: browseMaterialsDialog
-        title: "Select Materials Folder"
+    // Image to VTF Converter Dialog
+    Dialog {
+        id: imageToVtfDialog
+        modal: true
+        anchors.centerIn: parent
+        width: 750
+        height: 550
+        padding: 0
+        
+        property var selectedImages: []
+        property string outputDirectory: ""
+        property bool generateMipmaps: true
+        property bool isNormalMap: false
+        property bool isConverting: false
+        property int convertProgress: 0
+        property int convertTotal: 0
+        
+        // Texture options
+        property bool clampTexture: false
+        property bool noLod: false
+        property bool pointSample: false
+        property bool trilinear: false
+        property bool noCompression: false
+        property bool alphaTest: false
+        property int resizeMode: 0  // 0 = Auto (power of 2), 1 = None, 2 = Custom
+        property int customWidth: 512
+        property int customHeight: 512
+        
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: root.animDurationNormal; easing.type: root.animEasing }
+                NumberAnimation { property: "scale"; from: 0.9; to: 1; duration: root.animDurationNormal; easing.type: root.animEasingBounce }
+            }
+        }
+        exit: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 1; to: 0; duration: root.animDurationFast; easing.type: Easing.InCubic }
+                NumberAnimation { property: "scale"; from: 1; to: 0.95; duration: root.animDurationFast; easing.type: Easing.InCubic }
+            }
+        }
+        
+        background: Rectangle {
+            color: root.panelBg
+            border.color: root.panelBorder
+            radius: 8
+        }
+        
+        header: Item { height: 0 }
+        footer: Item { height: 0 }
+        
+        contentItem: ColumnLayout {
+            anchors.fill: parent
+            spacing: 0
+            
+            // Header
+            Rectangle {
+                Layout.fillWidth: true
+                height: 48
+                color: "transparent"
+                
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 16
+                    anchors.rightMargin: 16
+                    
+                    Text {
+                        text: "Image to VTF Converter"
+                        color: root.textColor
+                        font.pixelSize: 16
+                        font.bold: true
+                    }
+                    
+                    Item { Layout.fillWidth: true }
+                    
+                    Rectangle {
+                        width: 28
+                        height: 28
+                        radius: 14
+                        color: vtfCloseBtn.containsMouse ? root.buttonHover : "transparent"
+                        
+                        Text {
+                            anchors.centerIn: parent
+                            text: "✕"
+                            color: root.textDim
+                            font.pixelSize: 14
+                        }
+                        
+                        MouseArea {
+                            id: vtfCloseBtn
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: imageToVtfDialog.close()
+                        }
+                    }
+                }
+                
+                Rectangle {
+                    anchors.bottom: parent.bottom
+                    width: parent.width
+                    height: 1
+                    color: root.panelBorder
+                }
+            }
+            
+            // Main content - two columns
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.margins: 16
+                spacing: 16
+                
+                // LEFT COLUMN - Options
+                Rectangle {
+                    Layout.preferredWidth: 220
+                    Layout.fillHeight: true
+                    color: Qt.rgba(0, 0, 0, 0.15)
+                    radius: 6
+                    
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 12
+                        spacing: 12
+                        
+                        // Output folder
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            
+                            Text {
+                                text: "OUTPUT FOLDER"
+                                color: root.textDim
+                                font.pixelSize: 10
+                                font.bold: true
+                            }
+                            
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 32
+                                color: root.inputBg
+                                border.color: root.inputBorder
+                                radius: 4
+                                
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 6
+                                    spacing: 4
+                                    
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: {
+                                            if (!imageToVtfDialog.outputDirectory) return "Select folder..."
+                                            var parts = imageToVtfDialog.outputDirectory.split("/")
+                                            return ".../" + parts.slice(-2).join("/")
+                                        }
+                                        color: imageToVtfDialog.outputDirectory ? root.textColor : root.textDim
+                                        font.pixelSize: 11
+                                        elide: Text.ElideLeft
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    
+                                    Text {
+                                        text: "📁"
+                                        font.pixelSize: 14
+                                    }
+                                }
+                                
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        var path = app.browse_folder_native("Select Output Folder")
+                                        if (path.length > 0) {
+                                            imageToVtfDialog.outputDirectory = path
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Rectangle { Layout.fillWidth: true; height: 1; color: root.panelBorder }
+                        
+                        // Resize options
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            
+                            Text {
+                                text: "RESIZE"
+                                color: root.textDim
+                                font.pixelSize: 10
+                                font.bold: true
+                            }
+                            
+                            ComboBox {
+                                id: resizeModeCombo
+                                Layout.fillWidth: true
+                                model: ["Auto (Power of 2)", "Keep Original", "Custom Size"]
+                                currentIndex: imageToVtfDialog.resizeMode
+                                onCurrentIndexChanged: imageToVtfDialog.resizeMode = currentIndex
+                                
+                                background: Rectangle {
+                                    implicitHeight: 28
+                                    color: root.inputBg
+                                    border.color: root.inputBorder
+                                    radius: 4
+                                }
+                                
+                                contentItem: Text {
+                                    leftPadding: 8
+                                    text: resizeModeCombo.displayText
+                                    color: root.textColor
+                                    font.pixelSize: 11
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                            
+                            // Custom size inputs
+                            RowLayout {
+                                Layout.fillWidth: true
+                                visible: imageToVtfDialog.resizeMode === 2
+                                spacing: 8
+                                
+                                TextField {
+                                    Layout.fillWidth: true
+                                    text: imageToVtfDialog.customWidth.toString()
+                                    color: root.textColor
+                                    font.pixelSize: 11
+                                    horizontalAlignment: Text.AlignHCenter
+                                    validator: IntValidator { bottom: 1; top: 4096 }
+                                    onTextChanged: {
+                                        var val = parseInt(text)
+                                        if (!isNaN(val) && val > 0) imageToVtfDialog.customWidth = val
+                                    }
+                                    background: Rectangle {
+                                        implicitHeight: 26
+                                        color: root.inputBg
+                                        border.color: root.inputBorder
+                                        radius: 4
+                                    }
+                                }
+                                
+                                Text { text: "×"; color: root.textDim; font.pixelSize: 12 }
+                                
+                                TextField {
+                                    Layout.fillWidth: true
+                                    text: imageToVtfDialog.customHeight.toString()
+                                    color: root.textColor
+                                    font.pixelSize: 11
+                                    horizontalAlignment: Text.AlignHCenter
+                                    validator: IntValidator { bottom: 1; top: 4096 }
+                                    onTextChanged: {
+                                        var val = parseInt(text)
+                                        if (!isNaN(val) && val > 0) imageToVtfDialog.customHeight = val
+                                    }
+                                    background: Rectangle {
+                                        implicitHeight: 26
+                                        color: root.inputBg
+                                        border.color: root.inputBorder
+                                        radius: 4
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Rectangle { Layout.fillWidth: true; height: 1; color: root.panelBorder }
+                        
+                        // Texture flags
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            
+                            Text {
+                                text: "TEXTURE FLAGS"
+                                color: root.textDim
+                                font.pixelSize: 10
+                                font.bold: true
+                            }
+                            
+                            // Checkbox helper component
+                            component VtfCheckBox: CheckBox {
+                                id: vtfCheck
+                                property string label: ""
+                                
+                                contentItem: Text {
+                                    leftPadding: vtfCheck.indicator.width + 6
+                                    text: vtfCheck.label
+                                    color: root.textColor
+                                    font.pixelSize: 11
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                                
+                                indicator: Rectangle {
+                                    implicitWidth: 16
+                                    implicitHeight: 16
+                                    x: vtfCheck.leftPadding
+                                    y: parent.height / 2 - height / 2
+                                    radius: 3
+                                    border.color: vtfCheck.checked ? root.accent : root.inputBorder
+                                    color: vtfCheck.checked ? root.accent : "transparent"
+                                    
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "✓"
+                                        color: "white"
+                                        font.pixelSize: 10
+                                        visible: vtfCheck.checked
+                                    }
+                                }
+                            }
+                            
+                            VtfCheckBox {
+                                label: "Generate Mipmaps"
+                                checked: imageToVtfDialog.generateMipmaps
+                                onCheckedChanged: imageToVtfDialog.generateMipmaps = checked
+                            }
+                            
+                            VtfCheckBox {
+                                label: "Normal Map"
+                                checked: imageToVtfDialog.isNormalMap
+                                onCheckedChanged: imageToVtfDialog.isNormalMap = checked
+                            }
+                            
+                            VtfCheckBox {
+                                label: "Clamp (No Tiling)"
+                                checked: imageToVtfDialog.clampTexture
+                                onCheckedChanged: imageToVtfDialog.clampTexture = checked
+                            }
+                            
+                            VtfCheckBox {
+                                label: "No LOD"
+                                checked: imageToVtfDialog.noLod
+                                onCheckedChanged: imageToVtfDialog.noLod = checked
+                            }
+                            
+                            VtfCheckBox {
+                                label: "Point Sample"
+                                checked: imageToVtfDialog.pointSample
+                                onCheckedChanged: imageToVtfDialog.pointSample = checked
+                            }
+                            
+                            VtfCheckBox {
+                                label: "Trilinear"
+                                checked: imageToVtfDialog.trilinear
+                                onCheckedChanged: imageToVtfDialog.trilinear = checked
+                            }
+                        }
+                        
+                        Item { Layout.fillHeight: true }
+                    }
+                }
+                
+                // RIGHT COLUMN - File list
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    spacing: 8
+                    
+                    // File list header with action buttons
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        
+                        Text {
+                            text: "IMAGES (" + imageToVtfDialog.selectedImages.length + ")"
+                            color: root.textDim
+                            font.pixelSize: 10
+                            font.bold: true
+                        }
+                        
+                        Item { Layout.fillWidth: true }
+                        
+                        // Add button
+                        Rectangle {
+                            id: vtfAddBtn
+                            Layout.preferredWidth: 70
+                            Layout.preferredHeight: 24
+                            property bool btnHovered: false
+                            color: btnHovered ? root.accentHover : root.accent
+                            radius: 4
+                            
+                            Text {
+                                anchors.centerIn: parent
+                                text: "+ Add"
+                                color: "white"
+                                font.pixelSize: 11
+                                font.bold: true
+                            }
+                            
+                            MouseArea {
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onContainsMouseChanged: vtfAddBtn.btnHovered = containsMouse
+                                onClicked: addImageDialog.open()
+                            }
+                        }
+                        
+                        // Clear button
+                        Rectangle {
+                            id: vtfClearBtn
+                            Layout.preferredWidth: 60
+                            Layout.preferredHeight: 24
+                            visible: imageToVtfDialog.selectedImages.length > 0
+                            property bool btnHovered: false
+                            color: btnHovered ? "#c0392b" : "#e74c3c"
+                            radius: 4
+                            
+                            Text {
+                                anchors.centerIn: parent
+                                text: "Clear"
+                                color: "white"
+                                font.pixelSize: 11
+                                font.bold: true
+                            }
+                            
+                            MouseArea {
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onContainsMouseChanged: vtfClearBtn.btnHovered = containsMouse
+                                onClicked: imageToVtfDialog.selectedImages = []
+                            }
+                        }
+                    }
+                    
+                    // File list area
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        color: root.inputBg
+                        border.color: vtfDropArea.containsDrag ? root.accent : root.inputBorder
+                        border.width: vtfDropArea.containsDrag ? 2 : 1
+                        radius: 6
+                        
+                        // Click anywhere to add when empty
+                        MouseArea {
+                            anchors.fill: parent
+                            visible: imageToVtfDialog.selectedImages.length === 0
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: addImageDialog.open()
+                        }
+                        
+                        DropArea {
+                            id: vtfDropArea
+                            anchors.fill: parent
+                            keys: ["text/uri-list"]
+                            
+                            onDropped: (drop) => {
+                                var paths = []
+                                for (var i = 0; i < drop.urls.length; i++) {
+                                    var path = root.urlToLocalPath(drop.urls[i])
+                                    var lower = path.toLowerCase()
+                                    if (lower.endsWith(".png") || lower.endsWith(".jpg") || 
+                                        lower.endsWith(".jpeg") || lower.endsWith(".bmp") ||
+                                        lower.endsWith(".tga") || lower.endsWith(".gif")) {
+                                        paths.push(path)
+                                    }
+                                }
+                                if (paths.length > 0) {
+                                    imageToVtfDialog.selectedImages = imageToVtfDialog.selectedImages.concat(paths)
+                                }
+                            }
+                        }
+                        
+                        // Empty state - click to add
+                        Column {
+                            anchors.centerIn: parent
+                            visible: imageToVtfDialog.selectedImages.length === 0
+                            spacing: 12
+                            
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "📁"
+                                font.pixelSize: 40
+                                opacity: 0.5
+                            }
+                            
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "Click to add images\nor drag & drop"
+                                color: root.textDim
+                                font.pixelSize: 12
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                            
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "PNG, JPG, BMP, TGA, GIF"
+                                color: root.textDim
+                                font.pixelSize: 10
+                                opacity: 0.7
+                            }
+                        }
+                        
+                        // File list
+                        ListView {
+                            id: vtfImageList
+                            anchors.fill: parent
+                            anchors.margins: 4
+                            clip: true
+                            visible: imageToVtfDialog.selectedImages.length > 0
+                            model: imageToVtfDialog.selectedImages
+                            spacing: 2
+                            
+                            delegate: Rectangle {
+                                width: vtfImageList.width
+                                height: 36
+                                color: vtfItemMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.05) : "transparent"
+                                radius: 4
+                                
+                                MouseArea {
+                                    id: vtfItemMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                }
+                                
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 4
+                                    spacing: 8
+                                    
+                                    Rectangle {
+                                        Layout.preferredWidth: 28
+                                        Layout.preferredHeight: 28
+                                        color: root.buttonBg
+                                        radius: 4
+                                        
+                                        Image {
+                                            anchors.fill: parent
+                                            anchors.margins: 2
+                                            source: "file://" + modelData
+                                            fillMode: Image.PreserveAspectFit
+                                            asynchronous: true
+                                        }
+                                    }
+                                    
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 0
+                                        
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: modelData.split("/").pop().split("\\").pop()
+                                            color: root.textColor
+                                            font.pixelSize: 11
+                                            elide: Text.ElideMiddle
+                                        }
+                                        
+                                        Text {
+                                            property string info: app.get_image_info(modelData)
+                                            text: {
+                                                if (info.startsWith("ERR:")) return ""
+                                                var parts = info.split("|")
+                                                return parts[0] + " × " + parts[1] + " px"
+                                            }
+                                            color: root.textDim
+                                            font.pixelSize: 9
+                                        }
+                                    }
+                                    
+                                    Rectangle {
+                                        Layout.preferredWidth: 20
+                                        Layout.preferredHeight: 20
+                                        radius: 10
+                                        color: vtfRemoveBtn.containsMouse ? "#e74c3c" : "transparent"
+                                        visible: vtfItemMouse.containsMouse
+                                        
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "✕"
+                                            color: vtfRemoveBtn.containsMouse ? "white" : root.textDim
+                                            font.pixelSize: 10
+                                        }
+                                        
+                                        MouseArea {
+                                            id: vtfRemoveBtn
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                var newList = imageToVtfDialog.selectedImages.slice()
+                                                newList.splice(index, 1)
+                                                imageToVtfDialog.selectedImages = newList
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                        }
+                    }
+                    
+                    // Progress bar
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 20
+                        visible: imageToVtfDialog.isConverting
+                        color: root.inputBg
+                        border.color: root.inputBorder
+                        radius: 4
+                        
+                        Rectangle {
+                            width: parent.width * (imageToVtfDialog.convertTotal > 0 ? imageToVtfDialog.convertProgress / imageToVtfDialog.convertTotal : 0)
+                            height: parent.height
+                            color: root.accent
+                            radius: 4
+                        }
+                        
+                        Text {
+                            anchors.centerIn: parent
+                            text: imageToVtfDialog.convertProgress + " / " + imageToVtfDialog.convertTotal
+                            color: root.textColor
+                            font.pixelSize: 10
+                        }
+                    }
+                    
+                    // Action buttons
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        
+                        Item { Layout.fillWidth: true }
+                        
+                        // Cancel button
+                        Rectangle {
+                            id: vtfCancelBtn
+                            implicitWidth: 80
+                            implicitHeight: 32
+                            property bool btnHovered: false
+                            color: btnHovered ? root.buttonHover : root.buttonBg
+                            border.color: root.inputBorder
+                            radius: 4
+                            
+                            Text {
+                                anchors.centerIn: parent
+                                text: "Cancel"
+                                color: root.textColor
+                                font.pixelSize: 12
+                            }
+                            
+                            MouseArea {
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onContainsMouseChanged: vtfCancelBtn.btnHovered = containsMouse
+                                onClicked: imageToVtfDialog.close()
+                            }
+                        }
+                        
+                        // Convert button
+                        Rectangle {
+                            id: vtfConvertBtn
+                            implicitWidth: 120
+                            implicitHeight: 32
+                            property bool btnHovered: false
+                            property bool btnEnabled: imageToVtfDialog.selectedImages.length > 0 && 
+                                     imageToVtfDialog.outputDirectory.length > 0 &&
+                                     !imageToVtfDialog.isConverting
+                            color: !btnEnabled ? root.buttonBg : (btnHovered ? root.accentHover : root.accent)
+                            radius: 4
+                            opacity: btnEnabled ? 1.0 : 0.5
+                            
+                            Text {
+                                anchors.centerIn: parent
+                                text: imageToVtfDialog.isConverting ? "Converting..." : "Convert to VTF"
+                                color: "white"
+                                font.pixelSize: 12
+                                font.bold: true
+                            }
+                            
+                            MouseArea {
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: vtfConvertBtn.btnEnabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                enabled: vtfConvertBtn.btnEnabled
+                                onContainsMouseChanged: vtfConvertBtn.btnHovered = containsMouse
+                            
+                                onClicked: {
+                                    imageToVtfDialog.isConverting = true
+                                    imageToVtfDialog.convertProgress = 0
+                                    imageToVtfDialog.convertTotal = imageToVtfDialog.selectedImages.length
+                                    
+                                    var successCount = 0
+                                    for (var i = 0; i < imageToVtfDialog.selectedImages.length; i++) {
+                                        var inputPath = imageToVtfDialog.selectedImages[i]
+                                        var fileName = inputPath.split("/").pop().split("\\").pop()
+                                        var baseName = fileName.replace(/\.[^/.]+$/, "")
+                                        var outputPath = imageToVtfDialog.outputDirectory + "/" + baseName + ".vtf"
+                                        
+                                        var result = app.import_image_to_vtf(
+                                            inputPath, 
+                                            outputPath, 
+                                            imageToVtfDialog.generateMipmaps,
+                                            imageToVtfDialog.isNormalMap,
+                                            imageToVtfDialog.clampTexture,
+                                            imageToVtfDialog.noLod,
+                                            imageToVtfDialog.resizeMode,
+                                            imageToVtfDialog.customWidth,
+                                            imageToVtfDialog.customHeight
+                                        )
+                                        
+                                        if (!result.startsWith("ERR:")) {
+                                            successCount++
+                                        }
+                                        
+                                        imageToVtfDialog.convertProgress = i + 1
+                                    }
+                                    
+                                    imageToVtfDialog.isConverting = false
+                                    
+                                    if (successCount === imageToVtfDialog.selectedImages.length) {
+                                        root.showNotification("✓ Converted " + successCount + " images to VTF", "#4CAF50")
+                                        imageToVtfDialog.selectedImages = []
+                                    } else {
+                                        root.showNotification("Converted " + successCount + "/" + imageToVtfDialog.selectedImages.length + " images", "#FFA500")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        onOpened: {
+            if (outputDirectory.length === 0 && app.materials_root.length > 0) {
+                outputDirectory = app.materials_root
+            }
+        }
+    }
+    
+    // File dialog for adding images
+    FileDialog {
+        id: addImageDialog
+        title: "Select Images"
+        fileMode: FileDialog.OpenFiles
+        nameFilters: ["Image Files (*.png *.jpg *.jpeg *.bmp *.tga *.gif)", "All Files (*)"]
         onAccepted: {
-            var path = root.urlToLocalPath(selectedFolder)
-            app.set_materials_root_path(path)
-            manualPathField.text = path
-            welcomeDialog.selectedIndex = -1
+            var paths = []
+            for (var i = 0; i < selectedFiles.length; i++) {
+                paths.push(root.urlToLocalPath(selectedFiles[i]))
+            }
+            imageToVtfDialog.selectedImages = imageToVtfDialog.selectedImages.concat(paths)
         }
     }
     
@@ -3321,7 +4147,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 
                 Text {
-                    text: globalTextureBrowser.openMode ? "🖼 Texture Browser - Open" : "🖼 Texture Browser - Select"
+                    text: globalTextureBrowser.openMode ? "Texture Browser - Open" : "Texture Browser - Select"
                     color: root.textColor
                     font.pixelSize: 18
                     font.bold: true

@@ -165,6 +165,39 @@ pub mod qobject {
         // Returns a list of texture paths relative to materials folder
         #[qinvokable]
         fn get_custom_textures(self: &VFileXApp, max_results: i32) -> QStringList;
+
+        // Browse for a folder using native file dialog
+        // Returns the selected path or empty string if cancelled
+        #[qinvokable]
+        fn browse_folder_native(self: &VFileXApp, title: &QString) -> QString;
+
+        // Import an image file (PNG, JPG, etc.) and convert it to VTF
+        // Returns the output VTF path on success, or error message prefixed with "ERR:"
+        // resize_mode: 0 = auto power of 2, 1 = keep original, 2 = custom size
+        #[qinvokable]
+        fn import_image_to_vtf(
+            self: &VFileXApp, 
+            image_path: &QString, 
+            output_path: &QString, 
+            generate_mipmaps: bool, 
+            is_normal_map: bool,
+            clamp: bool,
+            no_lod: bool,
+            resize_mode: i32,
+            custom_width: i32,
+            custom_height: i32
+        ) -> QString;
+
+        // Get image information (width, height, format)
+        // Returns "width|height|format" or "ERR:message"
+        #[qinvokable]
+        fn get_image_info(self: &VFileXApp, image_path: &QString) -> QString;
+
+        // Batch convert images to VTF
+        // Takes a QStringList of image paths and output directory
+        // Returns number of successful conversions
+        #[qinvokable]
+        fn batch_import_images_to_vtf(self: &VFileXApp, image_paths: &QStringList, output_dir: &QString, generate_mipmaps: bool) -> i32;
     }
 
     // Signals
@@ -918,7 +951,7 @@ auto_save = {}
             self.collect_all_disk_textures(&direct_path, &direct_path, &mut custom_textures, limit);
         }
         
-        // Sort for consistent ordering
+        // FUCKING SORT PLEASE
         custom_textures.sort();
         if limit < usize::MAX {
             custom_textures.truncate(limit);
@@ -931,6 +964,154 @@ auto_save = {}
             .collect();
         let qlist: cxx_qt_lib::QList<cxx_qt_lib::QString> = strings.into();
         QStringList::from(&qlist)
+    }
+
+    // Browse for a folder using native file dialog
+    fn browse_folder_native(&self, title: &QString) -> QString {
+        let title_str = title.to_string();
+        
+        // Use rfd (Rust File Dialog) for native dialogs
+        if let Some(path) = rfd::FileDialog::new()
+            .set_title(&title_str)
+            .pick_folder()
+        {
+            QString::from(path.to_string_lossy().as_ref())
+        } else {
+            QString::default()
+        }
+    }
+
+    // Import an image file and convert it to VTF
+    fn import_image_to_vtf(
+        &self, 
+        image_path: &QString, 
+        output_path: &QString, 
+        generate_mipmaps: bool, 
+        is_normal_map: bool,
+        clamp: bool,
+        no_lod: bool,
+        resize_mode: i32,
+        custom_width: i32,
+        custom_height: i32
+    ) -> QString {
+        let input_path = image_path.to_string();
+        let output = output_path.to_string();
+        
+        // Load the image
+        let img = match image::open(&input_path) {
+            Ok(img) => img,
+            Err(e) => return QString::from(format!("ERR: Failed to load image: {}", e).as_str()),
+        };
+        
+        // Convert to RGBA8
+        let rgba = img.to_rgba8();
+        let (width, height) = rgba.dimensions();
+        
+        // Determine final dimensions based on resize mode
+        // 0 = auto power of 2, 1 = keep original, 2 = custom size
+        let (final_width, final_height) = match resize_mode {
+            1 => (width, height), // Keep original
+            2 => {
+                // Custom size
+                let w = if custom_width > 0 { custom_width as u32 } else { width };
+                let h = if custom_height > 0 { custom_height as u32 } else { height };
+                (w, h)
+            }
+            _ => {
+                // Auto power of 2 (mode 0 or default)
+                if !width.is_power_of_two() || !height.is_power_of_two() {
+                    (width.next_power_of_two(), height.next_power_of_two())
+                } else {
+                    (width, height)
+                }
+            }
+        };
+        
+        // Resize if needed
+        let final_data = if final_width != width || final_height != height {
+            let resized = image::imageops::resize(
+                &rgba,
+                final_width,
+                final_height,
+                image::imageops::FilterType::Lanczos3,
+            );
+            resized.into_raw()
+        } else {
+            rgba.into_raw()
+        };
+        
+        // Build VTF
+        let builder = VtfBuilder::new(final_width, final_height, final_data)
+            .mipmaps(generate_mipmaps)
+            .normal_map(is_normal_map)
+            .clamp(clamp)
+            .no_lod(no_lod);
+        
+        match builder.save(&output) {
+            Ok(_) => QString::from(output.as_str()),
+            Err(e) => QString::from(format!("ERR: Failed to save VTF: {}", e).as_str()),
+        }
+    }
+
+    // Get image information
+    fn get_image_info(&self, image_path: &QString) -> QString {
+        let path = image_path.to_string();
+        
+        match image::image_dimensions(&path) {
+            Ok((width, height)) => {
+                // Try to determine format from extension
+                let format = std::path::Path::new(&path)
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .unwrap_or("unknown")
+                    .to_uppercase();
+                
+                QString::from(format!("{}|{}|{}", width, height, format).as_str())
+            }
+            Err(e) => QString::from(format!("ERR: {}", e).as_str()),
+        }
+    }
+
+    // Batch convert images to VTF
+    fn batch_import_images_to_vtf(&self, image_paths: &QStringList, output_dir: &QString, generate_mipmaps: bool) -> i32 {
+        let output_directory = output_dir.to_string();
+        let mut success_count = 0;
+        
+        // Create output directory if it doesn't exist
+        if let Err(_) = std::fs::create_dir_all(&output_directory) {
+            return 0;
+        }
+        
+        // Convert QStringList to QList for iteration
+        let qlist: cxx_qt_lib::QList<cxx_qt_lib::QString> = image_paths.into();
+        
+        for i in 0..qlist.len() {
+            if let Some(path_qstr) = qlist.get(i) {
+                let input_path = path_qstr.to_string();
+                
+                // Generate output filename
+                let input_file = std::path::Path::new(&input_path);
+                let stem = input_file.file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("texture");
+                
+                let output_path = std::path::Path::new(&output_directory)
+                    .join(format!("{}.vtf", stem));
+                
+                let output_qstr = QString::from(output_path.to_string_lossy().as_ref());
+                let input_qstr = QString::from(input_path.as_str());
+                
+                let result = self.import_image_to_vtf(
+                    &input_qstr, &output_qstr, generate_mipmaps, false,
+                    false, false, 0, 0, 0
+                );
+                if !result.to_string().starts_with("ERR:") {
+                    success_count += 1;
+                }
+            }
+        }
+        
+        success_count
     }
 }
 

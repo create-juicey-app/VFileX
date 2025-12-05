@@ -1,4 +1,4 @@
-//! VTF decoder - i forgot textures are upside down
+//! VTF decoder
 
 use super::formats::convert_to_rgba;
 use super::header::{VtfFormat, VtfHeader};
@@ -6,13 +6,11 @@ use super::{VtfError, VtfResult};
 use std::fs;
 use std::path::Path;
 
-// A decoded image frame (the bytes are just vibing in memory)
 #[derive(Debug, Clone)]
 pub struct DecodedFrame {
     pub data: Vec<u8>,
     pub width: u32,
     pub height: u32,
-    // 0 = highest res, higher = squintier
     pub mipmap_level: u8,
     pub frame: u16,
 }
@@ -29,7 +27,6 @@ impl DecodedFrame {
     }
 }
 
-// A loaded VTF texture (Gabe Newell's gift to humanity)
 #[derive(Debug, Clone)]
 pub struct VtfImage {
     pub header: VtfHeader,
@@ -66,7 +63,6 @@ impl VtfImage {
         self.header.high_res_format
     }
 
-    // Decode the thumbnail (basically a texture for ants)
     pub fn decode_thumbnail(&self) -> VtfResult<DecodedFrame> {
         let width = self.header.low_res_width as u32;
         let height = self.header.low_res_height as u32;
@@ -95,7 +91,6 @@ impl VtfImage {
         })
     }
 
-    // Decode a specific mipmap level and frame (mipmap 7 is just one sad pixel)
     pub fn decode(&self, mipmap_level: u8, frame: u16) -> VtfResult<DecodedFrame> {
         if mipmap_level >= self.header.mipmap_count {
             return Err(VtfError::InvalidMipmap(mipmap_level as u32));
@@ -146,7 +141,6 @@ impl VtfImage {
         Ok(frames)
     }
 
-    // WARNING: Here be pointer arithmetic dragons
     fn calculate_data_offset(&self, mipmap_level: u8, frame: u16) -> usize {
         let mut offset = self.header.header_size as usize;
 
@@ -176,7 +170,6 @@ impl VtfImage {
     }
 }
 
-// VTF file decoder (it decodes things... shocking, I know)
 pub struct VtfDecoder;
 
 impl VtfDecoder {
@@ -196,7 +189,7 @@ impl VtfDecoder {
 
         let expected_size = header.header_size + header.total_data_size();
         if (data.len() as u32) < expected_size {
-            // Valve moment™, some VTFs are truncated but we just roll with it
+            // Some VTFs are truncated but still loadable
         }
 
         Ok(VtfImage {
@@ -206,22 +199,23 @@ impl VtfDecoder {
         })
     }
 
-    // Sniff a VTF without commitment issues
     pub fn probe<P: AsRef<Path>>(path: P) -> VtfResult<VtfHeader> {
         let mut file = fs::File::open(path)?;
-        let mut header_data = vec![0u8; 80]; // Max header size for version 7.5
+        let mut header_data = vec![0u8; 80];
         std::io::Read::read(&mut file, &mut header_data)?;
         VtfHeader::read(&header_data)
     }
 }
 
-// Builder for creating VTF files (because Valve won't release their tools for Linux)
 pub struct VtfBuilder {
     width: u32,
     height: u32,
     format: VtfFormat,
     generate_mipmaps: bool,
     is_normal_map: bool,
+    clamp_s: bool,
+    clamp_t: bool,
+    no_lod: bool,
     rgba_data: Vec<u8>,
 }
 
@@ -233,6 +227,9 @@ impl VtfBuilder {
             format: VtfFormat::Dxt5,
             generate_mipmaps: true,
             is_normal_map: false,
+            clamp_s: false,
+            clamp_t: false,
+            no_lod: false,
             rgba_data,
         }
     }
@@ -262,29 +259,34 @@ impl VtfBuilder {
         self
     }
 
+    pub fn clamp(mut self, clamp: bool) -> Self {
+        self.clamp_s = clamp;
+        self.clamp_t = clamp;
+        self
+    }
+
+    pub fn no_lod(mut self, no_lod: bool) -> Self {
+        self.no_lod = no_lod;
+        self
+    }
+
     fn calculate_mipmap_count(width: u32, height: u32) -> u8 {
         let max_dim = width.max(height);
         (max_dim as f32).log2().floor() as u8 + 1
     }
 
-    // Assembles bytes
-    // I don't know what valve was smoking when they designed this format
-    // But that must be some strong shit
     pub fn build(self) -> VtfResult<Vec<u8>> {
-        // DXT compression is left because i don't care
-
         let mipmap_count = if self.generate_mipmaps {
             Self::calculate_mipmap_count(self.width, self.height)
         } else {
             1
         };
 
-        // BGRA because Microsoft said so in 1995 and we're still paying for it
         let format = VtfFormat::Bgra8888;
-        let header_size: u32 = 64;
+        let header_size: u32 = 80;
         let mut output = Vec::new();
 
-        output.extend_from_slice(b"VTF\0"); // The sacred runes
+        output.extend_from_slice(b"VTF\0");
         output.extend_from_slice(&7u32.to_le_bytes());
         output.extend_from_slice(&2u32.to_le_bytes());
         output.extend_from_slice(&header_size.to_le_bytes());
@@ -293,47 +295,54 @@ impl VtfBuilder {
 
         let mut flags: u32 = 0;
         if self.is_normal_map {
-            flags |= 0x00000080;
+            flags |= 0x00000080; // TEXTUREFLAGS_NORMAL
+        }
+        if self.clamp_s {
+            flags |= 0x00000004; // TEXTUREFLAGS_CLAMPS
+        }
+        if self.clamp_t {
+            flags |= 0x00000008; // TEXTUREFLAGS_CLAMPT
+        }
+        if self.no_lod {
+            flags |= 0x00000200; // TEXTUREFLAGS_NOLOD
         }
         flags |= 0x00002000;
-        // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
         output.extend_from_slice(&flags.to_le_bytes());
         output.extend_from_slice(&1u16.to_le_bytes());
         output.extend_from_slice(&0u16.to_le_bytes());
-        output.extend_from_slice(&0u32.to_le_bytes());
+        output.extend_from_slice(&[0u8; 4]);
         output.extend_from_slice(&0.5f32.to_le_bytes());
         output.extend_from_slice(&0.5f32.to_le_bytes());
         output.extend_from_slice(&0.5f32.to_le_bytes());
-        output.extend_from_slice(&0u32.to_le_bytes());
+        output.extend_from_slice(&[0u8; 4]);
         output.extend_from_slice(&1.0f32.to_le_bytes());
         output.extend_from_slice(&(format as i32).to_le_bytes());
         output.push(mipmap_count);
         output.extend_from_slice(&(VtfFormat::Dxt1 as i32).to_le_bytes());
-        let low_res_width = (self.width / 16).max(1) as u8;
-        let low_res_height = (self.height / 16).max(1) as u8;
-        output.push(low_res_width);
-        output.push(low_res_height);
+        output.push(4);
+        output.push(4);
         output.extend_from_slice(&1u16.to_le_bytes());
+        output.extend_from_slice(&[0u8; 3]);
+        output.extend_from_slice(&0u32.to_le_bytes());
 
         while output.len() < header_size as usize {
             output.push(0);
         }
 
-        // The world's saddest thumbnail
-        let thumb_size =
-            VtfFormat::Dxt1.compute_image_size(low_res_width as u32, low_res_height as u32);
-        output.extend(vec![0u8; thumb_size as usize]);
+        let avg_color = self.calculate_average_color();
+        let thumb_data = self.create_dxt1_solid_block(avg_color);
+        output.extend_from_slice(&thumb_data);
 
-        // Mipmap time! (smallest to largest)
         for mip in (0..mipmap_count).rev() {
             let mip_width = (self.width >> mip).max(1);
             let mip_height = (self.height >> mip).max(1);
 
             let mip_data = if mip == 0 {
-                // RGBA -> BGRA 
                 let mut bgra = self.rgba_data.clone();
                 for i in (0..bgra.len()).step_by(4) {
-                    bgra.swap(i, i + 2);
+                    if i + 2 < bgra.len() {
+                        bgra.swap(i, i + 2);
+                    }
                 }
                 bgra
             } else {
@@ -350,7 +359,9 @@ impl VtfBuilder {
 
                 let mut bgra = resized.into_raw();
                 for i in (0..bgra.len()).step_by(4) {
-                    bgra.swap(i, i + 2);
+                    if i + 2 < bgra.len() {
+                        bgra.swap(i, i + 2);
+                    }
                 }
                 bgra
             };
@@ -359,6 +370,57 @@ impl VtfBuilder {
         }
 
         Ok(output)
+    }
+
+    fn calculate_average_color(&self) -> [u8; 4] {
+        let pixel_count = (self.width * self.height) as usize;
+        if pixel_count == 0 || self.rgba_data.len() < 4 {
+            return [128, 128, 128, 255];
+        }
+
+        let mut r_sum: u64 = 0;
+        let mut g_sum: u64 = 0;
+        let mut b_sum: u64 = 0;
+        let mut a_sum: u64 = 0;
+        let mut count: u64 = 0;
+
+        for i in (0..self.rgba_data.len()).step_by(4) {
+            if i + 3 < self.rgba_data.len() {
+                r_sum += self.rgba_data[i] as u64;
+                g_sum += self.rgba_data[i + 1] as u64;
+                b_sum += self.rgba_data[i + 2] as u64;
+                a_sum += self.rgba_data[i + 3] as u64;
+                count += 1;
+            }
+        }
+
+        if count == 0 {
+            return [128, 128, 128, 255];
+        }
+
+        [
+            (r_sum / count) as u8,
+            (g_sum / count) as u8,
+            (b_sum / count) as u8,
+            (a_sum / count) as u8,
+        ]
+    }
+
+    fn create_dxt1_solid_block(&self, color: [u8; 4]) -> [u8; 8] {
+        let r5 = (color[0] as u16 >> 3) & 0x1F;
+        let g6 = (color[1] as u16 >> 2) & 0x3F;
+        let b5 = (color[2] as u16 >> 3) & 0x1F;
+        let rgb565 = (r5 << 11) | (g6 << 5) | b5;
+
+        let mut block = [0u8; 8];
+        block[0..2].copy_from_slice(&rgb565.to_le_bytes());
+        block[2..4].copy_from_slice(&rgb565.to_le_bytes());
+        block[4] = 0;
+        block[5] = 0;
+        block[6] = 0;
+        block[7] = 0;
+
+        block
     }
 
     pub fn save<P: AsRef<Path>>(self, path: P) -> VtfResult<()> {
