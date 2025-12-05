@@ -33,6 +33,13 @@ Item {
     property color pickedColor: "transparent"
     property point colorPickerPos: Qt.point(0, 0)
     
+    // Animation playback state
+    property bool isAnimationPlaying: false
+    property int animationFps: 10  // Default playback FPS
+    property bool showFramesPanel: textureProvider && textureProvider.is_animated && textureProvider.frame_count > 1
+    property real framesPanelWidth: 220  // Resizable width
+    property int thumbnailVersion: 0  // Increment to force thumbnail reload
+    
     // fucking windows file url bullshit fuck windows
     function urlToLocalPath(url) {
         var path = url.toString()
@@ -82,18 +89,56 @@ Item {
         onTriggered: root.previewVersion++
     }
     
+    // Animation playback timer
+    Timer {
+        id: animationTimer
+        interval: 1000 / root.animationFps
+        repeat: true
+        running: root.isAnimationPlaying && root.showFramesPanel
+        onTriggered: {
+            if (textureProvider && textureProvider.frame_count > 1) {
+                var nextFrame = (textureProvider.current_frame + 1) % textureProvider.frame_count
+                textureProvider.set_frame(nextFrame)
+            }
+        }
+    }
+    
     // Connect to texture provider signals
     Connections {
         target: textureProvider
         function onTexture_loaded() { 
             root.previewVersion++
+            root.thumbnailVersion = 0  // Reset thumbnail version for new texture
             root.resetZoom()
+            root.isAnimationPlaying = false  // Stop animation when new texture loads
+            // Start thumbnail refresh timer for animated textures
+            if (textureProvider && textureProvider.is_animated) {
+                thumbnailRefreshTimer.retryCount = 0
+                thumbnailRefreshTimer.start()
+            }
         }
         function onFrame_changed() {
             refreshDebounce.restart()
         }
         function onMipmap_changed() {
             refreshDebounce.restart()
+        }
+    }
+    
+    // Timer to refresh thumbnails until all are loaded
+    Timer {
+        id: thumbnailRefreshTimer
+        interval: 200
+        repeat: true
+        property int retryCount: 0
+        
+        onTriggered: {
+            root.thumbnailVersion++
+            retryCount++
+            // Stop after a reasonable number of retries (enough time for all frames to generate), but this doesn't work perfectly, great :)
+            if (retryCount > 10) {
+                stop()
+            }
         }
     }
     
@@ -154,7 +199,12 @@ Item {
         anchors.fill: parent
         anchors.topMargin: 56
         anchors.bottomMargin: 36
+        anchors.rightMargin: root.showFramesPanel ? framesPanel.width : 0
         clip: true
+        
+        Behavior on anchors.rightMargin {
+            NumberAnimation { duration: root.animDurationNormal; easing.type: Easing.OutCubic }
+        }
         
         // Panning state with smooth animation
         property real panX: 0
@@ -415,6 +465,371 @@ Item {
                     font.bold: true
                     font.family: "monospace"
                 }
+            }
+        }
+    }
+    
+    // FRAMES PANEL (for animated VTFs)
+    Rectangle {
+        id: framesPanel
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.right: parent.right
+        anchors.topMargin: 52
+        anchors.bottomMargin: 32
+        width: root.showFramesPanel ? root.framesPanelWidth : 0
+        color: root.panelBg
+        visible: width > 0
+        clip: true
+        
+        Behavior on width {
+            NumberAnimation { duration: root.animDurationNormal; easing.type: Easing.OutCubic }
+        }
+        
+        // Resize handle on the left edge
+        Rectangle {
+            id: framesPanelResizeHandle
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            width: 4
+            color: framesPanelResizeMouse.containsMouse || framesPanelResizeMouse.pressed ? root.accent : "transparent"
+            
+            Behavior on color { ColorAnimation { duration: root.animDurationFast } }
+            
+            MouseArea {
+                id: framesPanelResizeMouse
+                anchors.fill: parent
+                anchors.leftMargin: -2
+                anchors.rightMargin: -2
+                hoverEnabled: true
+                cursorShape: Qt.SizeHorCursor
+                
+                property real startX: 0
+                property real startWidth: 0
+                
+                onPressed: function(mouse) {
+                    startX = mapToGlobal(mouse.x, 0).x
+                    startWidth = root.framesPanelWidth
+                }
+                
+                onPositionChanged: function(mouse) {
+                    if (pressed) {
+                        var currentX = mapToGlobal(mouse.x, 0).x
+                        var delta = startX - currentX
+                        root.framesPanelWidth = Math.max(180, Math.min(400, startWidth + delta))
+                    }
+                }
+            }
+        }
+        
+        // Panel header with play controls
+        Rectangle {
+            id: framesPanelHeader
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 4
+            height: 44
+            color: "#1e1e1e"
+            
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 8
+                anchors.rightMargin: 8
+                spacing: 6
+                
+                // Play/Pause button
+                Rectangle {
+                    id: playPauseBtn
+                    width: 32
+                    height: 28
+                    radius: 4
+                    color: playPauseMouse.containsMouse ? root.buttonHover : root.buttonBg
+                    
+                    scale: playPauseMouse.pressed ? 0.92 : 1.0
+                    Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: Easing.OutCubic } }
+                    Behavior on color { ColorAnimation { duration: root.animDurationFast } }
+                    
+                    Text {
+                        anchors.centerIn: parent
+                        text: root.isAnimationPlaying ? "⏸" : "▶"
+                        color: root.isAnimationPlaying ? "#d4a857" : "#7cb87c"
+                        font.pixelSize: 14
+                    }
+                    
+                    MouseArea {
+                        id: playPauseMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.isAnimationPlaying = !root.isAnimationPlaying
+                    }
+                }
+                
+                // Frame counter
+                Text {
+                    text: "Frame " + (textureProvider ? (textureProvider.current_frame + 1) : 0) + "/" + (textureProvider ? textureProvider.frame_count : 0)
+                    color: root.textColor
+                    font.pixelSize: 11
+                    font.family: "monospace"
+                    Layout.fillWidth: true
+                }
+                
+                // FPS input
+                Rectangle {
+                    width: 56
+                    height: 24
+                    radius: 4
+                    color: root.buttonBg
+                    border.color: fpsInput.activeFocus ? root.accent : "transparent"
+                    border.width: 1
+                    
+                    Behavior on border.color { ColorAnimation { duration: root.animDurationFast } }
+                    
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 4
+                        anchors.rightMargin: 4
+                        spacing: 2
+                        
+                        TextInput {
+                            id: fpsInput
+                            Layout.fillWidth: true
+                            text: root.animationFps.toString()
+                            color: root.textColor
+                            font.pixelSize: 11
+                            font.family: "monospace"
+                            horizontalAlignment: TextInput.AlignRight
+                            selectByMouse: true
+                            validator: IntValidator { bottom: 1; top: 60 }
+                            
+                            onEditingFinished: {
+                                var val = parseInt(text)
+                                if (!isNaN(val) && val >= 1 && val <= 60) {
+                                    root.animationFps = val
+                                } else {
+                                    text = root.animationFps.toString()
+                                }
+                            }
+                            
+                            onActiveFocusChanged: {
+                                if (!activeFocus) {
+                                    text = root.animationFps.toString()
+                                }
+                            }
+                            
+                            Keys.onUpPressed: {
+                                root.animationFps = Math.min(60, root.animationFps + 1)
+                                text = root.animationFps.toString()
+                            }
+                            Keys.onDownPressed: {
+                                root.animationFps = Math.max(1, root.animationFps - 1)
+                                text = root.animationFps.toString()
+                            }
+                        }
+                        
+                        Text {
+                            text: "fps"
+                            color: root.textDim
+                            font.pixelSize: 9
+                        }
+                    }
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.NoButton
+                        onWheel: function(wheel) {
+                            if (wheel.angleDelta.y > 0) {
+                                root.animationFps = Math.min(60, root.animationFps + 1)
+                            } else {
+                                root.animationFps = Math.max(1, root.animationFps - 1)
+                            }
+                            fpsInput.text = root.animationFps.toString()
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Separator line
+        Rectangle {
+            anchors.top: framesPanelHeader.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 4
+            height: 1
+            color: "#3c3c3c"
+        }
+        
+        // Frames list
+        ListView {
+            id: framesListView
+            anchors.top: framesPanelHeader.bottom
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.topMargin: 1
+            anchors.leftMargin: 8
+            anchors.rightMargin: 8
+            anchors.bottomMargin: 4
+            spacing: 6
+            clip: true
+            
+            model: textureProvider ? textureProvider.frame_count : 0
+            
+            // Auto-scroll to current frame when playing, wish to set it in the middle but i don't really wanna deal with that rn
+            onCurrentIndexChanged: {
+                if (root.isAnimationPlaying) {
+                    positionViewAtIndex(currentIndex, ListView.Contain)
+                }
+            }
+            
+            // Update current index when frame changes
+            Connections {
+                target: textureProvider
+                function onFrame_changed() {
+                    if (textureProvider) {
+                        framesListView.currentIndex = textureProvider.current_frame
+                    }
+                }
+            }
+            
+            delegate: Rectangle {
+                id: frameDelegate
+                width: framesListView.width - 12  // Leave space for scrollbar
+                height: 56
+                radius: 4
+                color: {
+                    var isSelected = textureProvider && textureProvider.current_frame === index
+                    if (isSelected) return root.accent
+                    if (frameDelegateMouse.containsMouse) return root.buttonHover
+                    return root.buttonBg
+                }
+                
+                Behavior on color { ColorAnimation { duration: root.animDurationFast } }
+                
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 6
+                    anchors.rightMargin: 6
+                    anchors.topMargin: 4
+                    anchors.bottomMargin: 4
+                    spacing: 8
+                    
+                    // Frame thumbnail preview
+                    Rectangle {
+                        width: 48
+                        height: 48
+                        radius: 3
+                        color: "#1a1a1a"
+                        clip: true
+                        
+                        // Checkerboard background for alpha
+                        Canvas {
+                            anchors.fill: parent
+                            onPaint: {
+                                var ctx = getContext("2d")
+                                var size = 6
+                                ctx.fillStyle = "#222"
+                                ctx.fillRect(0, 0, width, height)
+                                ctx.fillStyle = "#333"
+                                for (var yy = 0; yy < height; yy += size * 2) {
+                                    for (var xx = 0; xx < width; xx += size * 2) {
+                                        ctx.fillRect(xx, yy, size, size)
+                                        ctx.fillRect(xx + size, yy + size, size, size)
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Image {
+                            id: frameThumbnailImage
+                            anchors.fill: parent
+                            anchors.margins: 2
+                            fillMode: Image.PreserveAspectFit
+                            smooth: true
+                            mipmap: true
+                            cache: false  // Don't cache so we can refresh
+                            asynchronous: true
+                            
+                            // Use the frame-specific thumbnail method with version for refresh
+                            source: {
+                                if (textureProvider && textureProvider.is_loaded && root.thumbnailVersion >= 0) {
+                                    var thumb = textureProvider.get_frame_thumbnail(index)
+                                    if (thumb && thumb !== "") {
+                                        return thumb + "?v=" + root.thumbnailVersion
+                                    }
+                                }
+                                return ""
+                            }
+                            
+                            // Show loading indicator while thumbnail generates
+                            Rectangle {
+                                anchors.fill: parent
+                                color: "#2a2a2a"
+                                visible: parent.status !== Image.Ready
+                                
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "..."
+                                    color: root.textDim
+                                    font.pixelSize: 10
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Frame info
+                    Column {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        spacing: 2
+                        
+                        Text {
+                            text: "Frame " + (index + 1)
+                            color: textureProvider && textureProvider.current_frame === index ? "#ffffff" : root.textColor
+                            font.pixelSize: 12
+                            font.bold: textureProvider && textureProvider.current_frame === index
+                        }
+                        
+                        Text {
+                            visible: textureProvider && textureProvider.current_frame === index
+                            text: "Current"
+                            color: "#7cb87c"
+                            font.pixelSize: 10
+                        }
+                        
+                        Text {
+                            visible: !(textureProvider && textureProvider.current_frame === index)
+                            text: "Click to view"
+                            color: root.textDim
+                            font.pixelSize: 10
+                            opacity: frameDelegateMouse.containsMouse ? 1.0 : 0.6
+                        }
+                    }
+                }
+                
+                MouseArea {
+                    id: frameDelegateMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (textureProvider) {
+                            root.isAnimationPlaying = false  // Stop playback when manually selecting
+                            textureProvider.set_frame(index)
+                        }
+                    }
+                }
+            }
+            
+            // Scrollbar
+            ScrollBar.vertical: ScrollBar {
+                id: framesScrollBar
+                active: true
+                policy: ScrollBar.AsNeeded
+                width: 8
             }
         }
     }

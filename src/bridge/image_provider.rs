@@ -130,6 +130,12 @@ pub mod qobject {
         // Returns empty string if no texture is loaded
         #[qinvokable]
         fn get_preview_path(self: Pin<&mut TextureProvider>) -> QString;
+
+        // Get a thumbnail path for a specific frame (for animation frame list)
+        // Returns file:// URL to a cached PNG thumbnail for the given frame
+        // funny
+        #[qinvokable]
+        fn get_frame_thumbnail(self: &TextureProvider, frame: i32) -> QString;
     }
 
     // Signals
@@ -162,6 +168,8 @@ pub struct TextureProviderRust {
     current_decoded: Option<DecodedFrame>,
     // Cached preview path
     preview_path: Option<PathBuf>,
+    // Pre-cached frame paths for animated textures (frame index -> path)
+    frame_cache: HashMap<(i32, i32), PathBuf>,  // (frame, mipmap) -> path
 
     // Q_PROPERTY backing fields
     current_texture: QString,
@@ -184,6 +192,7 @@ impl Default for TextureProviderRust {
             vtf_image: None,
             current_decoded: None,
             preview_path: None,
+            frame_cache: HashMap::new(),
             current_texture: QString::default(),
             texture_width: 0,
             texture_height: 0,
@@ -207,8 +216,17 @@ impl qobject::TextureProvider {
 
         match VtfDecoder::load_file(&path_str) {
             Ok(vtf) => {
+                // Clear old frame cache
+                self.as_mut().rust_mut().frame_cache.clear();
+                
                 self.as_mut().update_from_vtf(&vtf);
                 self.as_mut().set_current_texture(path.clone());
+                
+                // Pre-cache all frames for animated textures to prevent stutter
+                if vtf.is_animated() && vtf.header.frames > 1 {
+                    self.as_mut().precache_animation_frames(&vtf);
+                }
+                
                 self.as_mut().rust_mut().vtf_image = Some(vtf);
 
                 // Decode the first frame
@@ -223,6 +241,32 @@ impl qobject::TextureProvider {
                 self.as_mut().set_error_message(msg.clone());
                 self.as_mut().error_occurred(msg);
                 false
+            }
+        }
+    }
+    
+    // Pre-cache all animation frames to prevent stutter during playback
+    fn precache_animation_frames(mut self: Pin<&mut Self>, vtf: &VtfImage) {
+        let frame_count = vtf.header.frames;
+        let temp_dir = std::env::temp_dir();
+        
+        // Use mipmap 0 for full quality, or 1 if many mipmaps available
+        let mipmap: i32 = if vtf.header.mipmap_count > 3 { 1 } else { 0 };
+        
+        for frame in 0..frame_count {
+            let preview_path = temp_dir.join(format!("VFileX_preview_{}_{}.png", frame, mipmap));
+            
+            // Skip if already cached on disk
+            if preview_path.exists() {
+                self.as_mut().rust_mut().frame_cache.insert((frame as i32, mipmap), preview_path);
+                continue;
+            }
+            
+            // Decode and save this frame
+            if let Ok(decoded) = vtf.decode(mipmap as u8, frame) {
+                if decoded.save(preview_path.to_str().unwrap_or("")).is_ok() {
+                    self.as_mut().rust_mut().frame_cache.insert((frame as i32, mipmap), preview_path);
+                }
             }
         }
     }
@@ -501,6 +545,7 @@ impl qobject::TextureProvider {
     fn clear(mut self: Pin<&mut Self>) {
         self.as_mut().rust_mut().vtf_image = None;
         self.as_mut().rust_mut().current_decoded = None;
+        self.as_mut().rust_mut().frame_cache.clear();
         self.as_mut().set_current_texture(QString::default());
         self.as_mut().set_texture_width(0);
         self.as_mut().set_texture_height(0);
@@ -577,6 +622,25 @@ impl qobject::TextureProvider {
 
     // Get a temporary file path with the current frame saved as PNG
     fn get_preview_path(mut self: Pin<&mut Self>) -> QString {
+        let frame = self.current_frame;
+        
+        // Determine the mipmap to use
+        let mipmap: i32 = if self.current_mipmap == 0 {
+            // If we have > 3 mipmaps, use mipmap 1 for preview (still high quality)
+            let mut prefer = 0i32;
+            if let Some(ref vtf) = self.vtf_image {
+                if vtf.header.mipmap_count > 3 { prefer = 1; }
+            }
+            prefer
+        } else { self.current_mipmap };
+        
+        // Check if we have this frame pre-cached (for animated textures)
+        if let Some(cached_path) = self.frame_cache.get(&(frame, mipmap)) {
+            if cached_path.exists() {
+                return QString::from(cached_path.to_str().unwrap_or(""));
+            }
+        }
+        
         // Make sure we have a decoded frame
         if self.current_decoded.is_none() && self.vtf_image.is_some() {
             self.as_mut().decode_current_frame();
@@ -588,28 +652,32 @@ impl qobject::TextureProvider {
 
         // At this point we have a decoded frame
         let decoded = self.current_decoded.as_ref().unwrap();
-            // Create temp file path with frame/mipmap in name for cache invalidation
-            let frame = self.current_frame;
-            // Use a slightly higher (smaller) mipmap for previews when possible.
-            // Keep provider state untouched: decode & save from the desired mipmap
-            // Use 1/4 of the way for good quality previews
-            let mipmap: i32 = if self.current_mipmap == 0 {
-                // If we have > 3 mipmaps, use mipmap 1 for preview (still high quality)
-                let mut prefer = 0i32;
-                if let Some(ref vtf) = self.vtf_image {
-                    if vtf.header.mipmap_count > 3 { prefer = 1; }
-                }
-                prefer
-            } else { self.current_mipmap };
-            let temp_dir = std::env::temp_dir();
-            let preview_path = temp_dir.join(format!("VFileX_preview_{}_{}.png", frame, mipmap));
+        let temp_dir = std::env::temp_dir();
+        let preview_path = temp_dir.join(format!("VFileX_preview_{}_{}.png", frame, mipmap));
 
-                // If the decoded frame matches our desired mipmap, save that; otherwise decode new one
-                if decoded.mipmap_level as i32 == mipmap as i32 {
-                    match decoded.save(preview_path.to_str().unwrap_or("")) {
+        // If the decoded frame matches our desired mipmap, save that; otherwise decode new one
+        if decoded.mipmap_level as i32 == mipmap as i32 {
+            match decoded.save(preview_path.to_str().unwrap_or("")) {
+                Ok(_) => {
+                    self.as_mut().rust_mut().preview_path = Some(preview_path.clone());
+                    // Return just the path - QML Image will handle it
+                    return QString::from(preview_path.to_str().unwrap_or(""));
+                }
+                Err(e) => {
+                    let msg = QString::from(format!("Failed to save preview: {}", e).as_str());
+                    self.as_mut().set_error_message(msg);
+                    return QString::default();
+                }
+            }
+        }
+
+        // Otherwise decode the requested mipmap for preview (without mutating provider state)
+        if let Some(ref vtf) = self.vtf_image {
+            match vtf.decode(mipmap as u8, frame as u16) {
+                Ok(decoded_preview) => {
+                    match decoded_preview.save(preview_path.to_str().unwrap_or("")) {
                         Ok(_) => {
                             self.as_mut().rust_mut().preview_path = Some(preview_path.clone());
-                            // Return just the path - QML Image will handle it
                             return QString::from(preview_path.to_str().unwrap_or(""));
                         }
                         Err(e) => {
@@ -619,23 +687,6 @@ impl qobject::TextureProvider {
                         }
                     }
                 }
-
-                // Otherwise decode the requested mipmap for preview (without mutating provider state)
-                if let Some(ref vtf) = self.vtf_image {
-            match vtf.decode(mipmap as u8, frame as u16) {
-                        Ok(decoded_preview) => {
-                            match decoded_preview.save(preview_path.to_str().unwrap_or("")) {
-                                Ok(_) => {
-                                    self.as_mut().rust_mut().preview_path = Some(preview_path.clone());
-                                    return QString::from(preview_path.to_str().unwrap_or(""));
-                                }
-                                Err(e) => {
-                                    let msg = QString::from(format!("Failed to save preview: {}", e).as_str());
-                                    self.as_mut().set_error_message(msg);
-                                    return QString::default();
-                                }
-                            }
-                        }
                         Err(e) => {
                             let msg = QString::from(format!("Failed to decode preview mipmap: {}", e).as_str());
                             self.as_mut().set_error_message(msg);
@@ -644,6 +695,51 @@ impl qobject::TextureProvider {
                     }
                 }
         QString::default()
+    }
+
+    // Get a thumbnail path for a specific frame (for animation frame list)
+    fn get_frame_thumbnail(&self, frame: i32) -> QString {
+        if frame < 0 || frame >= self.frame_count {
+            return QString::default();
+        }
+
+        let Some(ref vtf) = self.vtf_image else {
+            return QString::default();
+        };
+
+        // Generate a unique cache key based on the texture path and frame
+        let texture_key: String = self.current_texture.to_string()
+            .chars()
+            .map(|c| if c.is_alphanumeric() { c } else { '_' })
+            .collect();
+        
+        let temp_dir = std::env::temp_dir();
+        let thumbnail_path = temp_dir.join(format!("VFileX_frame_{}_{}.png", texture_key, frame));
+
+        // Return cached thumbnail if it exists
+        if thumbnail_path.exists() {
+            return QString::from(path_to_file_url(&thumbnail_path).as_str());
+        }
+
+        // Use mipmap level 1 or 2 for thumbnails (good quality, reasonable size)
+        // Mipmap 0 is full res, 1 is half, 2 is quarter, etc.
+        let mipmap_level = if vtf.header.mipmap_count > 2 {
+            1  // Use half-resolution mipmap for better quality thumbnails
+        } else {
+            0  // Use full resolution if only 1-2 mipmaps available
+        };
+
+        // Decode and save the frame thumbnail
+        match vtf.decode(mipmap_level, frame as u16) {
+            Ok(decoded) => {
+                if decoded.save(thumbnail_path.to_str().unwrap_or("")).is_ok() {
+                    QString::from(path_to_file_url(&thumbnail_path).as_str())
+                } else {
+                    QString::default()
+                }
+            }
+            Err(_) => QString::default(),
+        }
     }
 }
 

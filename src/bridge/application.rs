@@ -1009,6 +1009,7 @@ auto_save = {}
         
         // Determine final dimensions based on resize mode
         // 0 = auto power of 2, 1 = keep original, 2 = custom size
+        // IS THIS A FUCKING BFDI REFERENCE???
         let (final_width, final_height) = match resize_mode {
             1 => (width, height), // Keep original
             2 => {
