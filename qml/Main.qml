@@ -365,21 +365,21 @@ ApplicationWindow {
     }
     
     // ===== GLOBAL SHORTCUTS =====
-    // Note: Shortcuts defined here only, not in menu Actions (to avoid double-trigger)
-    Shortcut { sequence: "Ctrl+N"; onActivated: newMaterialDialog.open() }
-    Shortcut { sequence: "Ctrl+O"; onActivated: openFileDialog.open() }
-    Shortcut { sequence: "Ctrl+S"; onActivated: if (materialModel.is_loaded) materialModel.save_file(materialModel.file_path) }
-    Shortcut { sequence: "Ctrl+Shift+S"; onActivated: if (materialModel.is_loaded) saveFileDialog.open() }
-    Shortcut { sequence: "Ctrl+Q"; onActivated: Qt.quit() }
-    Shortcut { sequence: "Ctrl+="; onActivated: previewPane.zoomIn() }
-    Shortcut { sequence: "Ctrl+-"; onActivated: previewPane.zoomOut() }
-    Shortcut { sequence: "Ctrl+0"; onActivated: previewPane.resetZoom() }
-    Shortcut { sequence: "Ctrl+1"; onActivated: previewPane.fitToView() }
-    Shortcut { sequence: "Ctrl+2"; onActivated: previewPane.setActualSize() }
-    Shortcut { sequence: "Ctrl+T"; onActivated: { globalTextureBrowser.openMode = true; globalTextureBrowser.targetTextField = null; globalTextureBrowser.open() } }
-    Shortcut { sequence: "Ctrl+I"; onActivated: imageToVtfDialog.open() }
-    Shortcut { sequence: "Ctrl+G"; onActivated: { welcomeDialog.loadDetectedGames(); welcomeDialog.selectedIndex = -1; welcomeDialog.open() } }
-    Shortcut { sequence: "F1"; onActivated: aboutDialog.open() }
+    // These use ApplicationShortcut context to work even when menus are open
+    Shortcut { sequence: "Ctrl+N"; context: Qt.ApplicationShortcut; onActivated: newMaterialDialog.open() }
+    Shortcut { sequence: "Ctrl+O"; context: Qt.ApplicationShortcut; onActivated: openFileDialog.open() }
+    Shortcut { sequence: "Ctrl+S"; context: Qt.ApplicationShortcut; onActivated: if (materialModel.is_loaded) materialModel.save_file(materialModel.file_path) }
+    Shortcut { sequence: "Ctrl+Shift+S"; context: Qt.ApplicationShortcut; onActivated: if (materialModel.is_loaded) saveFileDialog.open() }
+    Shortcut { sequence: "Ctrl+Q"; context: Qt.ApplicationShortcut; onActivated: Qt.quit() }
+    Shortcut { sequence: "Ctrl+="; context: Qt.ApplicationShortcut; onActivated: previewPane.zoomIn() }
+    Shortcut { sequence: "Ctrl+-"; context: Qt.ApplicationShortcut; onActivated: previewPane.zoomOut() }
+    Shortcut { sequence: "Ctrl+0"; context: Qt.ApplicationShortcut; onActivated: previewPane.resetZoom() }
+    Shortcut { sequence: "Ctrl+1"; context: Qt.ApplicationShortcut; onActivated: previewPane.fitToView() }
+    Shortcut { sequence: "Ctrl+2"; context: Qt.ApplicationShortcut; onActivated: previewPane.setActualSize() }
+    Shortcut { sequence: "Ctrl+T"; context: Qt.ApplicationShortcut; onActivated: { globalTextureBrowser.openMode = true; globalTextureBrowser.targetTextField = null; globalTextureBrowser.open() } }
+    Shortcut { sequence: "Ctrl+I"; context: Qt.ApplicationShortcut; onActivated: imageToVtfDialog.open() }
+    Shortcut { sequence: "Ctrl+G"; context: Qt.ApplicationShortcut; onActivated: { welcomeDialog.loadDetectedGames(); welcomeDialog.selectedIndex = -1; welcomeDialog.open() } }
+    Shortcut { sequence: "F1"; context: Qt.ApplicationShortcut; onActivated: aboutDialog.open() }
     
     // ===== MENU BAR =====
     menuBar: MenuBar {
@@ -2187,9 +2187,6 @@ ApplicationWindow {
         }
     }
     
-    // ===== STATUS BAR =====
-    // Status bar removed for cleaner look
-    
     // ===== DIALOGS =====
     
     // New Material Dialog
@@ -2199,6 +2196,11 @@ ApplicationWindow {
         anchors.centerIn: parent
         width: 400
         padding: 0
+        
+        // Keyboard navigation
+        Keys.onEscapePressed: close()
+        Keys.onReturnPressed: { materialModel.new_material(newShaderCombo.currentText); close() }
+        Keys.onEnterPressed: { materialModel.new_material(newShaderCombo.currentText); close() }
         
         // Smooth enter/exit animations
         enter: Transition {
@@ -2214,7 +2216,7 @@ ApplicationWindow {
             }
         }
         
-        onOpened: newShaderCombo.setDefaultShader()
+        onOpened: { newShaderCombo.setDefaultShader(); newShaderCombo.forceActiveFocus() }
         
         background: Rectangle {
             color: root.panelBg
@@ -2423,7 +2425,16 @@ ApplicationWindow {
                         width: 90
                         height: 32
                         radius: 4
-                        color: cancelNewMouse.containsMouse ? root.buttonHover : root.buttonBg
+                        color: cancelNewMouse.containsMouse || cancelNewBtn.activeFocus ? root.buttonHover : root.buttonBg
+                        border.color: cancelNewBtn.activeFocus ? root.accent : "transparent"
+                        border.width: 1
+                        
+                        // Keyboard focus
+                        focus: false
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: newMaterialDialog.close()
+                        Keys.onEnterPressed: newMaterialDialog.close()
+                        Keys.onSpacePressed: newMaterialDialog.close()
                         
                         // Smooth hover animation
                         scale: cancelNewMouse.pressed ? 0.97 : 1.0
@@ -2451,7 +2462,16 @@ ApplicationWindow {
                         width: 90
                         height: 32
                         radius: 4
-                        color: okNewMouse.containsMouse ? root.accentHover : root.accent
+                        color: okNewMouse.containsMouse || createNewBtn.activeFocus ? root.accentHover : root.accent
+                        border.color: createNewBtn.activeFocus ? "#ffffff" : "transparent"
+                        border.width: 1
+                        
+                        // Keyboard focus
+                        focus: true
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: { materialModel.new_material(newShaderCombo.currentText); newMaterialDialog.close() }
+                        Keys.onEnterPressed: { materialModel.new_material(newShaderCombo.currentText); newMaterialDialog.close() }
+                        Keys.onSpacePressed: { materialModel.new_material(newShaderCombo.currentText); newMaterialDialog.close() }
                         
                         // Smooth hover animation (scale down on press only)
                         scale: okNewMouse.pressed ? 0.97 : 1.0
@@ -2490,6 +2510,18 @@ ApplicationWindow {
         width: 400
         padding: 0
         
+        // Keyboard navigation
+        Keys.onEscapePressed: close()
+        
+        function doAdd() {
+            if (newParamName.text !== "") {
+                materialModel.set_parameter_value(newParamName.text, newParamValue.text)
+                newParamName.text = ""
+                newParamValue.text = ""
+            }
+            close()
+        }
+        
         // Smooth enter/exit animations
         enter: Transition {
             ParallelAnimation {
@@ -2503,6 +2535,8 @@ ApplicationWindow {
                 NumberAnimation { property: "scale"; from: 1; to: 0.95; duration: root.animDurationFast; easing.type: Easing.InCubic }
             }
         }
+        
+        onOpened: newParamName.forceActiveFocus()
         
         background: Rectangle {
             color: root.panelBg
@@ -2560,6 +2594,10 @@ ApplicationWindow {
                         font.pixelSize: 13
                         verticalAlignment: Text.AlignVCenter
                         inputMethodHints: Qt.ImhNoPredictiveText
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: newParamValue.forceActiveFocus()
+                        Keys.onEnterPressed: newParamValue.forceActiveFocus()
+                        Keys.onTabPressed: newParamValue.forceActiveFocus()
                         
                         Text {
                             visible: !parent.text
@@ -2586,6 +2624,9 @@ ApplicationWindow {
                         font.pixelSize: 13
                         verticalAlignment: Text.AlignVCenter
                         inputMethodHints: Qt.ImhNoPredictiveText
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: addParamDialog.doAdd()
+                        Keys.onEnterPressed: addParamDialog.doAdd()
                         
                         Text {
                             visible: !parent.text
@@ -2619,7 +2660,14 @@ ApplicationWindow {
                         width: 90
                         height: 32
                         radius: 4
-                        color: cancelParamMouse.containsMouse ? root.buttonHover : root.buttonBg
+                        color: cancelParamMouse.containsMouse || cancelParamBtn.activeFocus ? root.buttonHover : root.buttonBg
+                        border.color: cancelParamBtn.activeFocus ? root.accent : "transparent"
+                        border.width: 1
+                        
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: addParamDialog.close()
+                        Keys.onEnterPressed: addParamDialog.close()
+                        Keys.onSpacePressed: addParamDialog.close()
                         
                         // Smooth hover animation
                         scale: cancelParamMouse.pressed ? 0.97 : 1.0
@@ -2647,7 +2695,14 @@ ApplicationWindow {
                         width: 90
                         height: 32
                         radius: 4
-                        color: okParamMouse.containsMouse ? root.accentHover : root.accent
+                        color: okParamMouse.containsMouse || okParamBtn.activeFocus ? root.accentHover : root.accent
+                        border.color: okParamBtn.activeFocus ? "#ffffff" : "transparent"
+                        border.width: 1
+                        
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: addParamDialog.doAdd()
+                        Keys.onEnterPressed: addParamDialog.doAdd()
+                        Keys.onSpacePressed: addParamDialog.doAdd()
                         
                         // Smooth hover animation (scale down on press only)
                         scale: okParamMouse.pressed ? 0.97 : 1.0
@@ -2667,14 +2722,7 @@ ApplicationWindow {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                if (newParamName.text !== "") {
-                                    materialModel.set_parameter_value(newParamName.text, newParamValue.text)
-                                    newParamName.text = ""
-                                    newParamValue.text = ""
-                                }
-                                addParamDialog.close()
-                            }
+                            onClicked: addParamDialog.doAdd()
                         }
                     }
                 }
@@ -2689,6 +2737,13 @@ ApplicationWindow {
         anchors.centerIn: parent
         width: 420
         padding: 0
+        
+        // Keyboard navigation
+        Keys.onEscapePressed: close()
+        Keys.onReturnPressed: close()
+        Keys.onEnterPressed: close()
+        
+        onOpened: aboutCloseBtn.forceActiveFocus()
         
         // Smooth enter/exit animations
         enter: Transition {
@@ -2847,12 +2902,19 @@ ApplicationWindow {
                 }
                 
                 Rectangle {
-                    id: closeAboutBtn
+                    id: aboutCloseBtn
                     anchors.centerIn: parent
                     width: 90
                     height: 32
                     radius: 4
-                    color: closeAboutMouse.containsMouse ? root.accentHover : root.accent
+                    color: closeAboutMouse.containsMouse || aboutCloseBtn.activeFocus ? root.accentHover : root.accent
+                    border.color: aboutCloseBtn.activeFocus ? "#ffffff" : "transparent"
+                    border.width: 1
+                    
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: aboutDialog.close()
+                    Keys.onEnterPressed: aboutDialog.close()
+                    Keys.onSpacePressed: aboutDialog.close()
                     
                     // Smooth hover animation (scale down on press only)
                     scale: closeAboutMouse.pressed ? 0.97 : 1.0
@@ -2887,6 +2949,21 @@ ApplicationWindow {
         width: 500
         padding: 0
         closePolicy: Popup.NoAutoClose
+        
+        // Keyboard navigation  
+        Keys.onEscapePressed: if (!isLoadingVPKs && selectedIndex >= 0) close()
+        Keys.onReturnPressed: if (!isLoadingVPKs && selectedIndex >= 0) selectGame()
+        Keys.onEnterPressed: if (!isLoadingVPKs && selectedIndex >= 0) selectGame()
+        Keys.onUpPressed: if (selectedIndex > 0) selectedIndex--
+        Keys.onDownPressed: if (selectedIndex < detectedGames.length - 1) selectedIndex++
+        
+        function selectGame() {
+            if (selectedIndex >= 0 && selectedIndex < detectedGames.length) {
+                app.select_game(detectedGames[selectedIndex].name, detectedGames[selectedIndex].path)
+            }
+        }
+        
+        onOpened: gameListView.forceActiveFocus()
         
         // Smooth enter/exit animations
         enter: Transition {
@@ -3018,7 +3095,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 200
                     color: root.inputBg
-                    border.color: root.inputBorder
+                    border.color: gameListView.activeFocus ? root.accent : root.inputBorder
                     radius: 6
                     visible: welcomeDialog.detectedGames.length > 0
                     
@@ -3029,6 +3106,17 @@ ApplicationWindow {
                         clip: true
                         model: welcomeDialog.detectedGames
                         spacing: 4
+                        focus: true
+                        activeFocusOnTab: true
+                        keyNavigationEnabled: true
+                        currentIndex: welcomeDialog.selectedIndex
+                        
+                        Keys.onReturnPressed: welcomeDialog.selectGame()
+                        Keys.onEnterPressed: welcomeDialog.selectGame()
+                        Keys.onUpPressed: if (welcomeDialog.selectedIndex > 0) welcomeDialog.selectedIndex--
+                        Keys.onDownPressed: if (welcomeDialog.selectedIndex < welcomeDialog.detectedGames.length - 1) welcomeDialog.selectedIndex++
+                        
+                        onCurrentIndexChanged: welcomeDialog.selectedIndex = currentIndex
                         
                         delegate: Rectangle {
                             id: gameItemRect
@@ -3381,6 +3469,9 @@ ApplicationWindow {
         property int resizeMode: 0  // 0 = Auto (power of 2), 1 = None, 2 = Custom
         property int customWidth: 512
         property int customHeight: 512
+        
+        // Keyboard navigation
+        Keys.onEscapePressed: close()
         
         enter: Transition {
             ParallelAnimation {
@@ -4196,6 +4287,21 @@ ApplicationWindow {
         property real saturation: 1
         property real brightness: 1
         
+        // Keyboard navigation
+        Keys.onEscapePressed: close()
+        Keys.onReturnPressed: applyColor()
+        Keys.onEnterPressed: applyColor()
+        
+        function applyColor() {
+            if (targetTextField) {
+                var r = Math.round(currentColor.r * 255)
+                var g = Math.round(currentColor.g * 255)
+                var b = Math.round(currentColor.b * 255)
+                targetTextField.text = "[" + r + " " + g + " " + b + "]"
+            }
+            close()
+        }
+        
         // Smooth enter/exit animations
         enter: Transition {
             ParallelAnimation {
@@ -4506,12 +4612,19 @@ ApplicationWindow {
                         width: 90
                         height: 32
                         radius: 4
-                        color: cancelColorMouse.containsMouse ? root.buttonHover : root.buttonBg
+                        color: cancelColorMouse.containsMouse || cancelColorBtn.activeFocus ? root.buttonHover : root.buttonBg
+                        border.color: cancelColorBtn.activeFocus ? root.accent : "transparent"
+                        border.width: 1
                         
                         // Smooth hover animation
                         scale: cancelColorMouse.pressed ? 0.97 : 1.0
                         Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
                         Behavior on color { ColorAnimation { duration: root.animDurationFast } }
+                        
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: colorPickerDialog.close()
+                        Keys.onEnterPressed: colorPickerDialog.close()
+                        Keys.onSpacePressed: colorPickerDialog.close()
                         
                         Text {
                             anchors.centerIn: parent
@@ -4534,12 +4647,19 @@ ApplicationWindow {
                         width: 90
                         height: 32
                         radius: 4
-                        color: okColorMouse.containsMouse ? root.accentHover : root.accent
+                        color: okColorMouse.containsMouse || okColorBtn.activeFocus ? root.accentHover : root.accent
+                        border.color: okColorBtn.activeFocus ? "#ffffff" : "transparent"
+                        border.width: 1
                         
                         // Smooth hover animation (scale down on press only)
                         scale: okColorMouse.pressed ? 0.97 : 1.0
                         Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
                         Behavior on color { ColorAnimation { duration: root.animDurationFast } }
+                        
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: colorPickerDialog.applyColor()
+                        Keys.onEnterPressed: colorPickerDialog.applyColor()
+                        Keys.onSpacePressed: colorPickerDialog.applyColor()
                         
                         Text {
                             anchors.centerIn: parent
@@ -4554,15 +4674,7 @@ ApplicationWindow {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                if (colorPickerDialog.targetTextField) {
-                                    var r = Math.round(colorPickerDialog.currentColor.r * 255)
-                                    var g = Math.round(colorPickerDialog.currentColor.g * 255)
-                                    var b = Math.round(colorPickerDialog.currentColor.b * 255)
-                                    colorPickerDialog.targetTextField.text = "[" + r + " " + g + " " + b + "]"
-                                }
-                                colorPickerDialog.close()
-                            }
+                            onClicked: colorPickerDialog.applyColor()
                         }
                     }
                 }
@@ -4585,6 +4697,23 @@ ApplicationWindow {
         height: Math.min(parent.height - 40, 700)
         modal: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        
+        // Keyboard navigation
+        Keys.onEscapePressed: close()
+        Keys.onReturnPressed: if (selectedTexture) selectCurrentTexture()
+        Keys.onEnterPressed: if (selectedTexture) selectCurrentTexture()
+        
+        function selectCurrentTexture() {
+            if (openMode) {
+                // Open mode: load in preview pane
+                textureProvider.load_from_material_path(selectedTexture, app.materials_root)
+                close()
+            } else if (targetTextField) {
+                // Select mode: fill text field
+                targetTextField.text = selectedTexture
+                close()
+            }
+        }
         
         // Smooth enter/exit animations
         enter: Transition {
@@ -4750,6 +4879,11 @@ ApplicationWindow {
                             id: searchField
                             Layout.fillWidth: true
                             placeholderText: "Search textures..."
+                            activeFocusOnTab: true
+                            
+                            Keys.onDownPressed: textureGrid.forceActiveFocus()
+                            Keys.onReturnPressed: textureGrid.forceActiveFocus()
+                            Keys.onEnterPressed: textureGrid.forceActiveFocus()
                             
                             onTextChanged: {
                                 searchTimer.restart()
@@ -4952,9 +5086,33 @@ ApplicationWindow {
                         id: textureGrid
                         cellWidth: 120
                         cellHeight: 140
+                        focus: true
+                        activeFocusOnTab: true
+                        keyNavigationEnabled: true
+                        highlightMoveDuration: 100
+                        
+                        // Sync keyboard navigation with selectedTexture
+                        onCurrentIndexChanged: {
+                            if (currentIndex >= 0 && currentIndex < model.length) {
+                                globalTextureBrowser.selectedTexture = model[currentIndex].path
+                            }
+                        }
+                        
+                        Keys.onReturnPressed: if (globalTextureBrowser.selectedTexture) globalTextureBrowser.selectCurrentTexture()
+                        Keys.onEnterPressed: if (globalTextureBrowser.selectedTexture) globalTextureBrowser.selectCurrentTexture()
+                        
+                        highlight: Rectangle {
+                            color: "transparent"
+                            border.color: root.accent
+                            border.width: 2
+                            radius: 6
+                        }
+                        highlightFollowsCurrentItem: true
                         
                         delegate: Rectangle {
                             id: gridItemRect
+                            required property int index
+                            required property var modelData
                             width: 115
                             height: 135
                             color: gridItemMouse.containsMouse ? root.buttonHover : "transparent"
@@ -4991,7 +5149,7 @@ ApplicationWindow {
                                     onTriggered: {
                                         if (!parent.thumbnailRequested && app.materials_root.length > 0) {
                                             parent.thumbnailRequested = true
-                                            var result = textureProvider.get_thumbnail_for_texture(modelData.path, app.materials_root)
+                                            var result = textureProvider.get_thumbnail_for_texture(gridItemRect.modelData.path, app.materials_root)
                                             // Only set source if result is a valid file:// URL
                                             if (result && result.length > 0 && result.toString().startsWith("file://")) {
                                                 parent.thumbnailSource = result
@@ -5114,7 +5272,7 @@ ApplicationWindow {
                                 
                                 // Custom texture badge
                                 Rectangle {
-                                    visible: modelData.isCustom === true
+                                    visible: gridItemRect.modelData.isCustom === true
                                     anchors.top: parent.top
                                     anchors.right: parent.right
                                     anchors.margins: 2
@@ -5149,7 +5307,7 @@ ApplicationWindow {
                             Text {
                                 Layout.fillWidth: true
                                 text: {
-                                    var parts = modelData.path.split("/")
+                                    var parts = gridItemRect.modelData.path.split("/")
                                     return parts[parts.length - 1]
                                 }
                                 color: root.textColor
@@ -5166,17 +5324,19 @@ ApplicationWindow {
                             cursorShape: Qt.PointingHandCursor
                             
                             onClicked: {
-                                globalTextureBrowser.selectedTexture = modelData.path
+                                textureGrid.currentIndex = gridItemRect.index
+                                globalTextureBrowser.selectedTexture = gridItemRect.modelData.path
                             }
                             
                             onDoubleClicked: {
-                                globalTextureBrowser.selectedTexture = modelData.path
+                                textureGrid.currentIndex = gridItemRect.index
+                                globalTextureBrowser.selectedTexture = gridItemRect.modelData.path
                                 if (globalTextureBrowser.openMode) {
                                     // Open mode: load in preview pane
-                                    textureProvider.load_from_material_path(modelData.path, app.materials_root)
+                                    textureProvider.load_from_material_path(gridItemRect.modelData.path, app.materials_root)
                                 } else if (globalTextureBrowser.targetTextField) {
                                     // Select mode: fill text field
-                                    globalTextureBrowser.targetTextField.text = modelData.path
+                                    globalTextureBrowser.targetTextField.text = gridItemRect.modelData.path
                                 }
                                 globalTextureBrowser.close()
                             }
@@ -5184,7 +5344,7 @@ ApplicationWindow {
                         
                         ToolTip {
                             visible: gridItemMouse.containsMouse
-                            text: modelData.path + (globalTextureBrowser.openMode ? "\nDouble-click to open" : "\nDouble-click to select")
+                            text: gridItemRect.modelData.path + (globalTextureBrowser.openMode ? "\nDouble-click to open" : "\nDouble-click to select")
                             delay: 500
                         }
                     }
@@ -5274,7 +5434,14 @@ ApplicationWindow {
                     width: 90
                     height: 32
                     radius: 4
-                    color: cancelMouse.containsMouse ? root.buttonHover : root.buttonBg
+                    color: cancelMouse.containsMouse || cancelBtn.activeFocus ? root.buttonHover : root.buttonBg
+                    border.color: cancelBtn.activeFocus ? root.accent : "transparent"
+                    border.width: 1
+                    
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: globalTextureBrowser.close()
+                    Keys.onEnterPressed: globalTextureBrowser.close()
+                    Keys.onSpacePressed: globalTextureBrowser.close()
                     
                     // Smooth hover animation
                     scale: cancelMouse.pressed ? 0.97 : 1.0
@@ -5302,8 +5469,15 @@ ApplicationWindow {
                     width: 90
                     height: 32
                     radius: 4
-                    color: selectMouse.containsMouse ? root.accentHover : root.accent
+                    color: selectMouse.containsMouse || selectBtn.activeFocus ? root.accentHover : root.accent
+                    border.color: selectBtn.activeFocus ? "#ffffff" : "transparent"
+                    border.width: 1
                     opacity: globalTextureBrowser.selectedTexture ? 1.0 : 0.5
+                    
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: if (globalTextureBrowser.selectedTexture) globalTextureBrowser.selectCurrentTexture()
+                    Keys.onEnterPressed: if (globalTextureBrowser.selectedTexture) globalTextureBrowser.selectCurrentTexture()
+                    Keys.onSpacePressed: if (globalTextureBrowser.selectedTexture) globalTextureBrowser.selectCurrentTexture()
                     
                     // Smooth hover animation (scale down on press only)
                     scale: selectMouse.pressed && globalTextureBrowser.selectedTexture ? 0.97 : 1.0
@@ -5324,16 +5498,7 @@ ApplicationWindow {
                         hoverEnabled: true
                         cursorShape: globalTextureBrowser.selectedTexture ? Qt.PointingHandCursor : Qt.ArrowCursor
                         enabled: globalTextureBrowser.selectedTexture !== ""
-                        onClicked: {
-                            if (globalTextureBrowser.openMode) {
-                                // Open mode: load in preview pane
-                                textureProvider.load_from_material_path(globalTextureBrowser.selectedTexture, app.materials_root)
-                            } else if (globalTextureBrowser.targetTextField) {
-                                // Select mode: fill text field
-                                globalTextureBrowser.targetTextField.text = globalTextureBrowser.selectedTexture
-                            }
-                            globalTextureBrowser.close()
-                        }
+                        onClicked: globalTextureBrowser.selectCurrentTexture()
                     }
                 }
             }
