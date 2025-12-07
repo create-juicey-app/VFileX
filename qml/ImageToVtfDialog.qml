@@ -663,7 +663,7 @@ Dialog {
                         id: vtfConvertBtn
                         width: 130
                         height: 32
-                        property bool btnEnabled: root.selectedImages.length > 0 && root.outputDirectory.length > 0 && !root.isConverting
+                        property bool btnEnabled: root.selectedImages.length > 0 && (root.outputDirectory.length > 0 || root.app.materials_root.length > 0) && !root.isConverting
                         color: !btnEnabled ? Theme.buttonBg : (vtfConvertBtnMouse.containsMouse ? Theme.accentHover : Theme.accent)
                         radius: 4
                         opacity: btnEnabled ? 1.0 : 0.5
@@ -688,31 +688,94 @@ Dialog {
                             enabled: vtfConvertBtn.btnEnabled
                             
                             onClicked: {
+                                // Urgent care is such a dying art~
                                 root.isConverting = true
                                 root.convertProgress = 0
                                 root.convertTotal = root.selectedImages.length
-                                
+                                var baseDir = (root.outputDirectory && root.outputDirectory.length > 0) ? root.outputDirectory : root.app.materials_root
+                                if (!baseDir || baseDir.length === 0) {
+                                    // No output directory available, cancel conversion
+                                    root.isConverting = false
+                                    return
+                                }
+                                // Ensure we're writing into a materials folder
+                                baseDir = baseDir.replace(/[\\\/]+$/, "")
+                                var lower = baseDir.toLowerCase()
+                                if (!lower.endsWith("/materials") && !lower.endsWith("\\materials")) {
+                                    baseDir = baseDir + "/materials"
+                                }
+                                // Create directory if backend supports it (best-effort)
+                                if (root.app.mkdir) root.app.mkdir(baseDir)
+                                else if (root.app.create_directory) root.app.create_directory(baseDir)
+                                else if (root.app.create_dir) root.app.create_dir(baseDir)
+                                else if (root.app.create_folder) root.app.create_folder(baseDir)
+                                var successCount = 0
+                                // I broke that yesterday lmaoo
+                                if (root.app.batch_import_images_to_vtf) {
+                                    var result = root.app.batch_import_images_to_vtf(root.selectedImages, baseDir, root.generateMipmaps, root.isNormalMap, root.clampTexture, root.noLod, root.resizeMode, root.customWidth, root.customHeight)
+                                    successCount = result
+                                    root.convertProgress = root.selectedImages.length
+                                } else {
+                                    // If batch call isn't available (older backends), fall back
+                                    for (var i = 0; i < root.selectedImages.length; i++) {
+                                        var inputPath = root.selectedImages[i]
+                                        var fileName = inputPath.split("/").pop().split("\\").pop()
+                                        var baseName = fileName.replace(/\.[^/.]+$/, "")
+                                        var outputPath = baseDir + "/" + baseName + ".vtf"
+                                        var res = root.app.import_image_to_vtf(
+                                            inputPath, outputPath,
+                                            root.generateMipmaps, root.isNormalMap,
+                                            root.clampTexture, root.noLod,
+                                            root.resizeMode, root.customWidth, root.customHeight
+                                        )
+                                        if (!res.startsWith("ERR:")) successCount++
+                                        root.convertProgress = i + 1
+                                    }
+                                }
+                                root.isConverting = false
+                                root.conversionComplete(successCount, root.selectedImages.length)
+                                if (successCount === root.selectedImages.length) {
+                                    root.selectedImages = []
+                                }
                                 var successCount = 0
                                 for (var i = 0; i < root.selectedImages.length; i++) {
                                     var inputPath = root.selectedImages[i]
                                     var fileName = inputPath.split("/").pop().split("\\").pop()
                                     var baseName = fileName.replace(/\.[^/.]+$/, "")
-                                    var outputPath = root.outputDirectory + "/" + baseName + ".vtf"
-                                    
+                            
+                                    // Determine base output directory: user-selected or app's default materials root
+                                    var baseDir = (root.outputDirectory && root.outputDirectory.length > 0) ? root.outputDirectory : root.app.materials_root
+                                    if (!baseDir) baseDir = root.outputDirectory // fallback to whatever is set
+                            
+                                    // Normalize and ensure we output into a "materials" subfolder
+                                    baseDir = baseDir.replace(/[\\\/]+$/, "") // remove trailing slash
+                                    var lower = baseDir.toLowerCase()
+                                    if (!lower.endsWith("/materials") && !lower.endsWith("\\materials")) {
+                                        baseDir = baseDir + "/materials"
+                                    }
+                            
+                                    // Try to create the materials dir if the app exposes a helper
+                                    if (root.app.mkdir) root.app.mkdir(baseDir)
+                                    else if (root.app.create_directory) root.app.create_directory(baseDir)
+                                    else if (root.app.create_dir) root.app.create_dir(baseDir)
+                                    else if (root.app.create_folder) root.app.create_folder(baseDir)
+                            
+                                    var outputPath = baseDir + "/" + baseName + ".vtf"
+                            
                                     var result = root.app.import_image_to_vtf(
                                         inputPath, outputPath, 
                                         root.generateMipmaps, root.isNormalMap,
                                         root.clampTexture, root.noLod,
                                         root.resizeMode, root.customWidth, root.customHeight
                                     )
-                                    
+                            
                                     if (!result.startsWith("ERR:")) successCount++
                                     root.convertProgress = i + 1
                                 }
-                                
+                            
                                 root.isConverting = false
                                 root.conversionComplete(successCount, root.selectedImages.length)
-                                
+                            
                                 if (successCount === root.selectedImages.length) {
                                     root.selectedImages = []
                                 }

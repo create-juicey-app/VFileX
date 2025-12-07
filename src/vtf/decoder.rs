@@ -216,7 +216,8 @@ pub struct VtfBuilder {
     clamp_s: bool,
     clamp_t: bool,
     no_lod: bool,
-    rgba_data: Vec<u8>,
+    // Support multiple frames for animated textures. Each entry is RGBA8 bytes for a single frame.
+    frames: Vec<Vec<u8>>,
 }
 
 impl VtfBuilder {
@@ -230,11 +231,69 @@ impl VtfBuilder {
             clamp_s: false,
             clamp_t: false,
             no_lod: false,
-            rgba_data,
+            frames: vec![rgba_data],
         }
     }
 
     pub fn from_image_file<P: AsRef<Path>>(path: P) -> VtfResult<Self> {
+        let path_ref = path.as_ref();
+        // Try to detect animated GIFs first
+        if let Some(ext) = path_ref.extension().and_then(|e| e.to_str()) {
+            if ext.eq_ignore_ascii_case("gif") {
+                // Decode GIF frames using image crate's GIF decoder
+                use image::codecs::gif::GifDecoder;
+                use image::AnimationDecoder;
+
+                let file = std::fs::File::open(path_ref)
+                    .map_err(|e| VtfError::InvalidData(format!("Failed to open file: {}", e)))?;
+                let buf_reader = std::io::BufReader::new(file);
+                let decoder = GifDecoder::new(buf_reader)
+                    .map_err(|e| VtfError::InvalidData(format!("Failed to decode GIF: {}", e)))?;
+
+                let frames_iter = decoder.into_frames();
+                let frames_collected = frames_iter
+                    .collect_frames()
+                    .map_err(|e| VtfError::InvalidData(format!("Failed to collect GIF frames: {}", e)))?;
+
+                if frames_collected.is_empty() {
+                    return Err(VtfError::InvalidData("No frames in GIF".into()));
+                }
+
+                // Use first frame as reference size
+                let (width, height) = (
+                    frames_collected[0].buffer().width(),
+                    frames_collected[0].buffer().height(),
+                );
+
+                // Convert each frame to RGBA8 raw and ensure consistent dimensions
+                let mut frames_data: Vec<Vec<u8>> = Vec::new();
+                for frame in frames_collected {
+                    let buf = frame.buffer();
+                    // Convert frame buffer into RGBA8 Vec<u8>
+                    let rgba_buf = buf.clone().to_owned();
+                    if rgba_buf.width() != width || rgba_buf.height() != height {
+                        return Err(VtfError::InvalidData(
+                            "GIF frames have different sizes, unsupported".into(),
+                        ));
+                    }
+                    frames_data.push(rgba_buf.into_raw());
+                }
+
+                return Ok(Self {
+                    width,
+                    height,
+                    format: VtfFormat::Dxt5,
+                    generate_mipmaps: true,
+                    is_normal_map: false,
+                    clamp_s: false,
+                    clamp_t: false,
+                    no_lod: false,
+                    frames: frames_data,
+                });
+            }
+        }
+
+        // Fallback: single-frame image
         let img = image::open(path)
             .map_err(|e| VtfError::InvalidData(format!("Failed to load image: {}", e)))?;
 
@@ -242,6 +301,33 @@ impl VtfBuilder {
         let (width, height) = rgba.dimensions();
 
         Ok(Self::new(width, height, rgba.into_raw()))
+    }
+
+    /// Create a VTF builder from a set of RGBA frames. Each frame is a raw RGBA8 byte vector.
+    pub fn from_frames(width: u32, height: u32, frames: Vec<Vec<u8>>) -> VtfResult<Self> {
+        if frames.is_empty() {
+            return Err(VtfError::InvalidData("No frames provided".into()));
+        }
+
+        // Ensure all frames have correct length
+        let expected_len = (width * height * 4) as usize;
+        for frame in &frames {
+            if frame.len() != expected_len {
+                return Err(VtfError::InvalidData("Frame size mismatch".into()));
+            }
+        }
+
+        Ok(Self {
+            width,
+            height,
+            format: VtfFormat::Dxt5,
+            generate_mipmaps: true,
+            is_normal_map: false,
+            clamp_s: false,
+            clamp_t: false,
+            no_lod: false,
+            frames,
+        })
     }
 
     pub fn format(mut self, format: VtfFormat) -> Self {
@@ -293,7 +379,7 @@ impl VtfBuilder {
         output.extend_from_slice(&(self.width as u16).to_le_bytes());
         output.extend_from_slice(&(self.height as u16).to_le_bytes());
 
-        let mut flags: u32 = 0;
+    let mut flags: u32 = 0;
         if self.is_normal_map {
             flags |= 0x00000080; // TEXTUREFLAGS_NORMAL
         }
@@ -308,7 +394,9 @@ impl VtfBuilder {
         }
         flags |= 0x00002000;
         output.extend_from_slice(&flags.to_le_bytes());
-        output.extend_from_slice(&1u16.to_le_bytes());
+    // Number of frames for animated textures
+    let frame_count_u16: u16 = self.frames.len() as u16;
+    output.extend_from_slice(&frame_count_u16.to_le_bytes());
         output.extend_from_slice(&0u16.to_le_bytes());
         output.extend_from_slice(&[0u8; 4]);
         output.extend_from_slice(&0.5f32.to_le_bytes());
@@ -333,40 +421,42 @@ impl VtfBuilder {
         let thumb_data = self.create_dxt1_solid_block(avg_color);
         output.extend_from_slice(&thumb_data);
 
+        // For each mipmap level (smallest-to-largest), write image data for all frames.
         for mip in (0..mipmap_count).rev() {
             let mip_width = (self.width >> mip).max(1);
             let mip_height = (self.height >> mip).max(1);
 
-            let mip_data = if mip == 0 {
-                let mut bgra = self.rgba_data.clone();
-                for i in (0..bgra.len()).step_by(4) {
-                    if i + 2 < bgra.len() {
-                        bgra.swap(i, i + 2);
+            for frame in &self.frames {
+                let mip_data = if mip == 0 {
+                    let mut bgra = frame.clone();
+                    for i in (0..bgra.len()).step_by(4) {
+                        if i + 2 < bgra.len() {
+                            bgra.swap(i, i + 2);
+                        }
                     }
-                }
-                bgra
-            } else {
-                let img =
-                    image::RgbaImage::from_raw(self.width, self.height, self.rgba_data.clone())
+                    bgra
+                } else {
+                    let img = image::RgbaImage::from_raw(self.width, self.height, frame.clone())
                         .ok_or(VtfError::InvalidData("Invalid image data".into()))?;
 
-                let resized = image::imageops::resize(
-                    &img,
-                    mip_width,
-                    mip_height,
-                    image::imageops::FilterType::Lanczos3,
-                );
+                    let resized = image::imageops::resize(
+                        &img,
+                        mip_width,
+                        mip_height,
+                        image::imageops::FilterType::Lanczos3,
+                    );
 
-                let mut bgra = resized.into_raw();
-                for i in (0..bgra.len()).step_by(4) {
-                    if i + 2 < bgra.len() {
-                        bgra.swap(i, i + 2);
+                    let mut bgra = resized.into_raw();
+                    for i in (0..bgra.len()).step_by(4) {
+                        if i + 2 < bgra.len() {
+                            bgra.swap(i, i + 2);
+                        }
                     }
-                }
-                bgra
-            };
+                    bgra
+                };
 
-            output.extend(mip_data);
+                output.extend(mip_data);
+            }
         }
 
         Ok(output)
@@ -374,7 +464,8 @@ impl VtfBuilder {
 
     fn calculate_average_color(&self) -> [u8; 4] {
         let pixel_count = (self.width * self.height) as usize;
-        if pixel_count == 0 || self.rgba_data.len() < 4 {
+        // Use first frame existence as validation
+        if pixel_count == 0 || self.frames.is_empty() || self.frames[0].len() < 4 {
             return [128, 128, 128, 255];
         }
 
@@ -384,13 +475,15 @@ impl VtfBuilder {
         let mut a_sum: u64 = 0;
         let mut count: u64 = 0;
 
-        for i in (0..self.rgba_data.len()).step_by(4) {
-            if i + 3 < self.rgba_data.len() {
-                r_sum += self.rgba_data[i] as u64;
-                g_sum += self.rgba_data[i + 1] as u64;
-                b_sum += self.rgba_data[i + 2] as u64;
-                a_sum += self.rgba_data[i + 3] as u64;
-                count += 1;
+        for frame in &self.frames {
+            for i in (0..frame.len()).step_by(4) {
+                if i + 3 < frame.len() {
+                    r_sum += frame[i] as u64;
+                    g_sum += frame[i + 1] as u64;
+                    b_sum += frame[i + 2] as u64;
+                    a_sum += frame[i + 3] as u64;
+                    count += 1;
+                }
             }
         }
 
@@ -440,5 +533,34 @@ mod tests {
         assert_eq!(VtfBuilder::calculate_mipmap_count(512, 512), 10);
         assert_eq!(VtfBuilder::calculate_mipmap_count(1024, 1024), 11);
         assert_eq!(VtfBuilder::calculate_mipmap_count(64, 128), 8);
+    }
+
+    #[test]
+    fn test_build_animated_vtf() {
+        // Create two simple 4x4 frames: red and green
+        let width = 4;
+        let height = 4;
+        let mut frame_red: Vec<u8> = Vec::new();
+        let mut frame_green: Vec<u8> = Vec::new();
+        for _ in 0..(width * height) {
+            frame_red.push(255); // R
+            frame_red.push(0); // G
+            frame_red.push(0); // B
+            frame_red.push(255); // A
+
+            frame_green.push(0);
+            frame_green.push(255);
+            frame_green.push(0);
+            frame_green.push(255);
+        }
+
+        let frames = vec![frame_red, frame_green];
+        let builder = VtfBuilder::from_frames(width, height, frames).unwrap();
+        let data = builder.build().unwrap();
+
+        // Parse back to ensure it was written as an animated texture
+        let vtf = VtfDecoder::load_from_memory(&data).unwrap();
+        assert_eq!(vtf.header.frames, 2);
+        assert!(vtf.header.mipmap_count >= 1);
     }
 }

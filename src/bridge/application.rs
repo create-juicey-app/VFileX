@@ -197,7 +197,7 @@ pub mod qobject {
         // Takes a QStringList of image paths and output directory
         // Returns number of successful conversions
         #[qinvokable]
-        fn batch_import_images_to_vtf(self: &VFileXApp, image_paths: &QStringList, output_dir: &QString, generate_mipmaps: bool) -> i32;
+    fn batch_import_images_to_vtf(self: &VFileXApp, image_paths: &QStringList, output_dir: &QString, generate_mipmaps: bool, is_normal_map: bool, clamp: bool, no_lod: bool, resize_mode: i32, custom_width: i32, custom_height: i32) -> i32;
     }
 
     // Signals
@@ -226,7 +226,7 @@ pub mod qobject {
 
 use crate::schema::ShaderRegistry;
 use crate::vpk_archive::{count_vpk_archives, VPK_MANAGER};
-use crate::vtf::{VtfBuilder, VtfDecoder};
+use crate::vtf::{VtfBuilder, VtfDecoder, VtfError};
 use qobject::*;
 
 const APP_NAME: &str = "VFileX";
@@ -997,57 +997,154 @@ auto_save = {}
         let input_path = image_path.to_string();
         let output = output_path.to_string();
         
-        // Load the image
-        let img = match image::open(&input_path) {
-            Ok(img) => img,
-            Err(e) => return QString::from(format!("ERR: Failed to load image: {}", e).as_str()),
-        };
-        
-        // Convert to RGBA8
-        let rgba = img.to_rgba8();
-        let (width, height) = rgba.dimensions();
-        
-        // Determine final dimensions based on resize mode
-        // 0 = auto power of 2, 1 = keep original, 2 = custom size
-        // IS THIS A FUCKING BFDI REFERENCE???
-        let (final_width, final_height) = match resize_mode {
-            1 => (width, height), // Keep original
-            2 => {
-                // Custom size
-                let w = if custom_width > 0 { custom_width as u32 } else { width };
-                let h = if custom_height > 0 { custom_height as u32 } else { height };
-                (w, h)
+        // Load the image and detect animated GIF
+        let pathbuf = std::path::Path::new(&input_path);
+        let ext = pathbuf.extension().and_then(|e| e.to_str()).unwrap_or("");
+
+        let mut is_animated_gif = false;
+        if ext.eq_ignore_ascii_case("gif") {
+            is_animated_gif = true;
+        }
+
+        // For still images, use the existing single-frame flow
+    let final_width: u32;
+    let final_height: u32;
+    let builder_result: Result<VtfBuilder, VtfError>;
+
+        if is_animated_gif {
+            // Decode GIF frames
+            use image::codecs::gif::GifDecoder;
+            use image::AnimationDecoder;
+
+            let file = match std::fs::File::open(&input_path) {
+                Ok(f) => f,
+                Err(e) => return QString::from(format!("ERR: Failed to open GIF: {}", e).as_str()),
+            };
+
+            let buf_reader = std::io::BufReader::new(file);
+
+            let decoder = match GifDecoder::new(buf_reader) {
+                Ok(d) => d,
+                Err(e) => return QString::from(format!("ERR: Failed to decode GIF: {}", e).as_str()),
+            };
+
+            let frames_iter = decoder.into_frames();
+
+            let frames = match frames_iter.collect_frames() {
+                Ok(f) => f,
+                Err(e) => return QString::from(format!("ERR: Failed to collect GIF frames: {}", e).as_str()),
+            };
+
+            if frames.is_empty() {
+                return QString::from("ERR: GIF contains no frames");
             }
-            _ => {
-                // Auto power of 2 (mode 0 or default)
-                if !width.is_power_of_two() || !height.is_power_of_two() {
-                    (width.next_power_of_two(), height.next_power_of_two())
-                } else {
-                    (width, height)
-                }
-            }
-        };
-        
-        // Resize if needed
-        let final_data = if final_width != width || final_height != height {
-            let resized = image::imageops::resize(
-                &rgba,
-                final_width,
-                final_height,
-                image::imageops::FilterType::Lanczos3,
+
+            let (width, height) = (
+                frames[0].buffer().width(),
+                frames[0].buffer().height(),
             );
-            resized.into_raw()
+
+            // Determine final size (for animated GIFs apply same resizing logic)
+            let (fw, fh) = match resize_mode {
+                1 => (width, height),
+                2 => {
+                    let w = if custom_width > 0 { custom_width as u32 } else { width };
+                    let h = if custom_height > 0 { custom_height as u32 } else { height };
+                    (w, h)
+                }
+                _ => {
+                    if !width.is_power_of_two() || !height.is_power_of_two() {
+                        (width.next_power_of_two(), height.next_power_of_two())
+                    } else {
+                        (width, height)
+                    }
+                }
+            };
+
+            final_width = fw;
+            final_height = fh;
+
+            // Resize frames if needed and collect raw RGBA
+            let mut frames_raw: Vec<Vec<u8>> = Vec::new();
+            for frame in frames {
+                let buf = frame.buffer().clone().to_owned();
+                let img_buf = if fw != width || fh != height {
+                    image::imageops::resize(&buf, fw, fh, image::imageops::FilterType::Lanczos3)
+                } else {
+                    buf
+                };
+                frames_raw.push(img_buf.into_raw());
+            }
+
+            builder_result = VtfBuilder::from_frames(final_width, final_height, frames_raw);
         } else {
-            rgba.into_raw()
+            // Load a single-frame image
+            let img = match image::open(&input_path) {
+                Ok(img) => img,
+                Err(e) => return QString::from(format!("ERR: Failed to load image: {}", e).as_str()),
+            };
+
+            // Convert to RGBA8
+            let rgba = img.to_rgba8();
+            let (width, height) = rgba.dimensions();
+
+            // Determine final dimensions based on resize mode
+            final_width = match resize_mode {
+                1 => width,
+                2 => {
+                    let w = if custom_width > 0 { custom_width as u32 } else { width };
+                    w
+                }
+                _ => {
+                    if !width.is_power_of_two() || !height.is_power_of_two() {
+                        width.next_power_of_two()
+                    } else {
+                        width
+                    }
+                }
+            };
+
+            final_height = match resize_mode {
+                1 => height,
+                2 => {
+                    let h = if custom_height > 0 { custom_height as u32 } else { height };
+                    h
+                }
+                _ => {
+                    if !width.is_power_of_two() || !height.is_power_of_two() {
+                        height.next_power_of_two()
+                    } else {
+                        height
+                    }
+                }
+            };
+
+            // Resize if needed
+            let final_data = if final_width != width || final_height != height {
+                let resized = image::imageops::resize(
+                    &rgba,
+                    final_width,
+                    final_height,
+                    image::imageops::FilterType::Lanczos3,
+                );
+                resized.into_raw()
+            } else {
+                rgba.into_raw()
+            };
+
+            builder_result = Ok(VtfBuilder::new(final_width, final_height, final_data));
+        }
+        
+        // Build VTF from constructed builder
+        let builder = match builder_result {
+            Ok(b) => b
+                .mipmaps(generate_mipmaps)
+                .normal_map(is_normal_map)
+                .clamp(clamp)
+                .no_lod(no_lod),
+            Err(e) => return QString::from(format!("ERR: Failed to build VTF builder: {}", e).as_str()),
         };
-        
-        // Build VTF
-        let builder = VtfBuilder::new(final_width, final_height, final_data)
-            .mipmaps(generate_mipmaps)
-            .normal_map(is_normal_map)
-            .clamp(clamp)
-            .no_lod(no_lod);
-        
+
         match builder.save(&output) {
             Ok(_) => QString::from(output.as_str()),
             Err(e) => QString::from(format!("ERR: Failed to save VTF: {}", e).as_str()),
@@ -1074,7 +1171,7 @@ auto_save = {}
     }
 
     // Batch convert images to VTF
-    fn batch_import_images_to_vtf(&self, image_paths: &QStringList, output_dir: &QString, generate_mipmaps: bool) -> i32 {
+    fn batch_import_images_to_vtf(&self, image_paths: &QStringList, output_dir: &QString, generate_mipmaps: bool, is_normal_map: bool, clamp: bool, no_lod: bool, resize_mode: i32, custom_width: i32, custom_height: i32) -> i32 {
         let output_directory = output_dir.to_string();
         let mut success_count = 0;
         
@@ -1103,8 +1200,8 @@ auto_save = {}
                 let input_qstr = QString::from(input_path.as_str());
                 
                 let result = self.import_image_to_vtf(
-                    &input_qstr, &output_qstr, generate_mipmaps, false,
-                    false, false, 0, 0, 0
+                    &input_qstr, &output_qstr, generate_mipmaps, is_normal_map,
+                    clamp, no_lod, resize_mode, custom_width, custom_height
                 );
                 if !result.to_string().starts_with("ERR:") {
                     success_count += 1;
