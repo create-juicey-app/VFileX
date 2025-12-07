@@ -1,6 +1,7 @@
 //! Built-in shader definitions
 //!
 //! TODO: erase this entire file and load from JSON instead for fucks sake
+//   ^ JUICEY DO THAT PLEASE, I KNOW IM SPEAKING TO MYSELF BUT I NEED TO DO THAT
 use super::{NumericRange, ParameterDef, ShaderDef};
 use once_cell::sync::Lazy;
 

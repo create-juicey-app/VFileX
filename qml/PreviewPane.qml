@@ -2,6 +2,9 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+import com.VFileX 1.0
+import "ThemeColors.js" as Theme
+
 Item {
     id: root
     
@@ -11,18 +14,18 @@ Item {
     property real maxZoom: 10.0
     property int previewVersion: 0  // Increment to force image reload
     
-    // Animation settings (matching Main.qml)
-    readonly property int animDurationFast: 120
-    readonly property int animDurationNormal: 200
-    readonly property int animDurationSlow: 300
+    // Animation settings (from Theme)
+    readonly property int animDurationFast: Theme.animDurationFast
+    readonly property int animDurationNormal: Theme.animDurationNormal
+    readonly property int animDurationSlow: Theme.animDurationSlow
     
-    // Colors
-    readonly property color textColor: "#e0e0e0"
-    readonly property color textDim: "#888888"
-    readonly property color panelBg: "#252526"
-    readonly property color buttonBg: "#3c3c3c"
-    readonly property color buttonHover: "#4a4a4a"
-    readonly property color accent: "#0e639c"
+    // Colors (from Theme)
+    readonly property color textColor: Theme.textColor
+    readonly property color textDim: Theme.textDim
+    readonly property color panelBg: Theme.panelBg
+    readonly property color buttonBg: Theme.buttonBg
+    readonly property color buttonHover: Theme.buttonHover
+    readonly property color accent: Theme.accent
     
     // Color picker state
     property bool showColorPicker: false
@@ -137,6 +140,13 @@ Item {
             if (retryCount > 10) {
                 stop()
             }
+        }
+    }
+    
+    // Load a texture by material path
+    function loadTexture(texturePath, materialsRoot) {
+        if (textureProvider && texturePath && texturePath.length > 0) {
+            textureProvider.load_from_material_path(texturePath, materialsRoot || "")
         }
     }
     

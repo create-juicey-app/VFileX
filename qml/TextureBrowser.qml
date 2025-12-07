@@ -1,0 +1,837 @@
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+
+import com.VFileX 1.0
+import "ThemeColors.js" as Theme
+
+Popup {
+    id: textureBrowser
+    
+    required property var app
+    required property var textureProvider
+    
+    property TextField targetTextField: null
+    property string selectedTexture: ""
+    property bool openMode: false
+    
+    signal textureSelected(string texturePath)
+    signal textureOpened(string texturePath)
+    
+    parent: Overlay.overlay
+    x: (parent.width - width) / 2
+    y: (parent.height - height) / 2
+    width: Math.min(parent.width - 40, 900)
+    height: Math.min(parent.height - 40, 700)
+    modal: true
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    
+    Overlay.modal: Rectangle { color: Theme.overlayBg }
+    
+    Keys.onEscapePressed: close()
+    Keys.onReturnPressed: if (selectedTexture) selectCurrentTexture()
+    Keys.onEnterPressed: if (selectedTexture) selectCurrentTexture()
+    
+    function selectCurrentTexture() {
+        if (openMode) {
+            // Open mode: load in preview pane
+            textureProvider.load_from_material_path(selectedTexture, app.materials_root)
+            textureOpened(selectedTexture)
+            close()
+        } else if (targetTextField) {
+            // Select mode: fill text field
+            targetTextField.text = selectedTexture
+            textureSelected(selectedTexture)
+            close()
+        }
+    }
+    
+    // Smooth enter/exit animations
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.animDurationNormal; easing.type: Theme.animEasing }
+            NumberAnimation { property: "scale"; from: 0.95; to: 1; duration: Theme.animDurationNormal; easing.type: Theme.animEasingBounce }
+        }
+    }
+    exit: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.animDurationFast; easing.type: Easing.InCubic }
+            NumberAnimation { property: "scale"; from: 1; to: 0.98; duration: Theme.animDurationFast; easing.type: Easing.InCubic }
+        }
+    }
+    
+    background: Rectangle {
+        color: Theme.panelBg
+        border.color: Theme.panelBorder
+        border.width: 1
+        radius: 8
+    }
+    
+    // Store textures
+    property var allTextures: []
+    property var filteredTextures: []
+    property string selectedCategory: "all"
+    property var categories: ["all", "custom", "brick", "concrete", "metal", "wood", "glass", "nature", "decals", "models", "effects", "other"]
+    property bool isLoading: false
+    
+    onOpened: {
+        loadTextures()
+        searchField.forceActiveFocus()
+    }
+    
+    function loadTextures() {
+        isLoading = true
+        // Get ALL textures from VPK (no limit)
+        var vpkTextures = app.get_texture_completions("", -1)
+        allTextures = []
+        
+        // Track paths we've already added to avoid duplicates
+        var addedPaths = {}
+        
+        for (var i = 0; i < vpkTextures.length; i++) {
+            var path = vpkTextures[i]
+            var category = categorizeTexture(path)
+            allTextures.push({
+                path: path,
+                category: category,
+                isCustom: false
+            })
+            addedPaths[path.toLowerCase()] = true
+        }
+        
+        // Get ALL custom textures from disk (no limit)
+        var customTextures = app.get_custom_textures(-1)
+        for (var j = 0; j < customTextures.length; j++) {
+            var customPath = customTextures[j]
+            // Skip if already added from VPK
+            if (addedPaths[customPath.toLowerCase()]) {
+                continue
+            }
+            var customCategory = categorizeTexture(customPath)
+            allTextures.push({
+                path: customPath,
+                category: customCategory,
+                isCustom: true
+            })
+            addedPaths[customPath.toLowerCase()] = true
+        }
+        
+        isLoading = false
+        filterTextures()
+    }
+    
+    function categorizeTexture(path) {
+        var lower = path.toLowerCase()
+        if (lower.indexOf("brick") !== -1) return "brick"
+        if (lower.indexOf("concrete") !== -1 || lower.indexOf("concretewall") !== -1) return "concrete"
+        if (lower.indexOf("metal") !== -1) return "metal"
+        if (lower.indexOf("wood") !== -1 || lower.indexOf("plywood") !== -1) return "wood"
+        if (lower.indexOf("glass") !== -1) return "glass"
+        if (lower.indexOf("nature") !== -1 || lower.indexOf("grass") !== -1 || lower.indexOf("dirt") !== -1 || lower.indexOf("rock") !== -1 || lower.indexOf("sand") !== -1) return "nature"
+        if (lower.indexOf("decal") !== -1 || lower.indexOf("overlay") !== -1) return "decals"
+        if (lower.indexOf("models/") !== -1) return "models"
+        if (lower.indexOf("effects") !== -1 || lower.indexOf("sprites") !== -1 || lower.indexOf("particle") !== -1) return "effects"
+        return "other"
+    }
+    
+    function filterTextures() {
+        var searchText = searchField.text.toLowerCase()
+        filteredTextures = []
+        
+        for (var i = 0; i < allTextures.length; i++) {
+            var tex = allTextures[i]
+            
+            // Category filter
+            if (selectedCategory === "custom") {
+                // Special case: show only custom textures
+                if (!tex.isCustom) continue
+            } else if (selectedCategory !== "all" && tex.category !== selectedCategory) {
+                continue
+            }
+            
+            // Search filter
+            if (searchText.length > 0 && tex.path.toLowerCase().indexOf(searchText) === -1) {
+                continue
+            }
+            
+            filteredTextures.push(tex)
+        }
+        
+        textureGrid.model = filteredTextures
+    }
+    
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 16
+        spacing: 12
+        
+        // Header
+        RowLayout {
+            Layout.fillWidth: true
+            
+            Image {
+                width: 20
+                height: 20
+                source: "qrc:/media/texture.svg"
+                sourceSize: Qt.size(20, 20)
+            }
+            
+            Text {
+                text: textureBrowser.openMode ? "Texture Browser - Open" : "Texture Browser - Select"
+                color: Theme.textColor
+                font.pixelSize: 18
+                font.bold: true
+            }
+            
+            Item { Layout.fillWidth: true }
+            
+            // Search field
+            Rectangle {
+                Layout.preferredWidth: 300
+                Layout.preferredHeight: 32
+                color: Theme.inputBg
+                border.color: searchField.activeFocus ? Theme.accent : Theme.inputBorder
+                border.width: 1
+                radius: 4
+                
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 4
+                    spacing: 8
+                    
+                    Image {
+                        width: 14
+                        height: 14
+                        source: "qrc:/media/search.svg"
+                        sourceSize: Qt.size(14, 14)
+                    }
+                    
+                    TextField {
+                        id: searchField
+                        Layout.fillWidth: true
+                        placeholderText: "Search textures..."
+                        activeFocusOnTab: true
+                        
+                        Keys.onDownPressed: textureGrid.forceActiveFocus()
+                        Keys.onReturnPressed: textureGrid.forceActiveFocus()
+                        Keys.onEnterPressed: textureGrid.forceActiveFocus()
+                        
+                        onTextChanged: {
+                            searchTimer.restart()
+                        }
+                        
+                        Timer {
+                            id: searchTimer
+                            interval: 200
+                            onTriggered: textureBrowser.filterTextures()
+                        }
+                        
+                        background: Rectangle { color: "transparent" }
+                        color: Theme.textColor
+                        font.pixelSize: 13
+                    }
+                    
+                    // Clear button
+                    Image {
+                        width: 10
+                        height: 10
+                        source: "qrc:/media/close.svg"
+                        sourceSize: Qt.size(10, 10)
+                        visible: searchField.text.length > 0
+                        opacity: clearSearchMouse.containsMouse ? 1.0 : 0.6
+                        
+                        MouseArea {
+                            id: clearSearchMouse
+                            anchors.fill: parent
+                            anchors.margins: -4
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: searchField.text = ""
+                        }
+                    }
+                }
+            }
+            
+            // Close button
+            Rectangle {
+                id: closeBrowserBtn
+                Layout.preferredWidth: 32
+                Layout.preferredHeight: 32
+                radius: 4
+                color: closeBrowserMouse.containsMouse ? "#c42b1c" : Theme.inputBg
+                
+                // Smooth hover animation
+                scale: closeBrowserMouse.pressed ? 0.97 : 1.0
+                Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
+                Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                
+                Image {
+                    anchors.centerIn: parent
+                    width: 14
+                    height: 14
+                    source: "qrc:/media/close.svg"
+                    sourceSize: Qt.size(14, 14)
+                }
+                
+                MouseArea {
+                    id: closeBrowserMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: textureBrowser.close()
+                }
+            }
+        }
+        
+        // Category tabs
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 4
+            
+            Repeater {
+                model: textureBrowser.categories
+                
+                Rectangle {
+                    id: categoryRect
+                    width: categoryText.implicitWidth + 16
+                    height: 28
+                    radius: 4
+                    color: textureBrowser.selectedCategory === modelData ? Theme.accent : (categoryMouse.containsMouse ? Theme.buttonHover : Theme.buttonBg)
+                    border.color: textureBrowser.selectedCategory === modelData ? Theme.accent : Theme.inputBorder
+                    border.width: 1
+                    
+                    // Smooth hover animations (scale down on press only)
+                    scale: categoryMouse.pressed ? 0.97 : 1.0
+                    Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
+                    Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                    
+                    Text {
+                        id: categoryText
+                        anchors.centerIn: parent
+                        text: modelData.charAt(0).toUpperCase() + modelData.slice(1)
+                        color: Theme.textColor
+                        font.pixelSize: 11
+                        font.bold: textureBrowser.selectedCategory === modelData
+                    }
+                    
+                    MouseArea {
+                        id: categoryMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            textureBrowser.selectedCategory = modelData
+                            textureBrowser.filterTextures()
+                        }
+                    }
+                }
+            }
+            
+            Item { Layout.fillWidth: true }
+            
+            // Results count
+            Text {
+                text: textureGrid.count + " textures"
+                color: Theme.textDim
+                font.pixelSize: 11
+            }
+        }
+        
+        // Selected texture info bar
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: textureBrowser.selectedTexture ? 40 : 0
+            color: Theme.inputBg
+            border.color: Theme.accent
+            border.width: 1
+            radius: 4
+            visible: textureBrowser.selectedTexture !== ""
+            clip: true
+            
+            Behavior on Layout.preferredHeight { NumberAnimation { duration: 150 } }
+            
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 8
+                
+                Text {
+                    text: "Selected:"
+                    color: Theme.textDim
+                    font.pixelSize: 12
+                }
+                
+                Text {
+                    Layout.fillWidth: true
+                    text: textureBrowser.selectedTexture
+                    color: Theme.textColor
+                    font.pixelSize: 12
+                    font.bold: true
+                    elide: Text.ElideMiddle
+                }
+                
+                Rectangle {
+                    width: copyBtn.implicitWidth + 28
+                    height: 24
+                    radius: 3
+                    color: copyMouse.containsMouse ? Theme.accentHover : Theme.accent
+                    
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: 6
+                        
+                        Image { width: 14; height: 14; source: "qrc:/media/clipboard.svg"; sourceSize: Qt.size(14, 14) }
+                        Text {
+                            id: copyBtn
+                            text: "Copy"
+                            color: "white"
+                            font.pixelSize: 11
+                        }
+                    }
+                    
+                    MouseArea {
+                        id: copyMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            // TODO: Copy to clipboard (implement in Rust)
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Texture grid with loading overlay
+        Item {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            
+            ScrollView {
+                anchors.fill: parent
+                clip: true
+                
+                GridView {
+                    id: textureGrid
+                    cellWidth: 120
+                    cellHeight: 140
+                    focus: true
+                    activeFocusOnTab: true
+                    keyNavigationEnabled: true
+                    highlightMoveDuration: 100
+                    
+                    // Sync keyboard navigation with selectedTexture
+                    onCurrentIndexChanged: {
+                        if (currentIndex >= 0 && currentIndex < model.length) {
+                            textureBrowser.selectedTexture = model[currentIndex].path
+                        }
+                    }
+                    
+                    Keys.onReturnPressed: if (textureBrowser.selectedTexture) textureBrowser.selectCurrentTexture()
+                    Keys.onEnterPressed: if (textureBrowser.selectedTexture) textureBrowser.selectCurrentTexture()
+                    
+                    highlight: Rectangle {
+                        color: "transparent"
+                        border.color: Theme.accent
+                        border.width: 2
+                        radius: 6
+                    }
+                    highlightFollowsCurrentItem: true
+                    
+                    delegate: Rectangle {
+                        id: gridItemRect
+                        required property int index
+                        required property var modelData
+                        width: 115
+                        height: 135
+                        color: gridItemMouse.containsMouse ? Theme.buttonHover : "transparent"
+                        border.color: textureBrowser.selectedTexture === modelData.path ? Theme.accent : (gridItemMouse.containsMouse ? Theme.accent : "transparent")
+                        border.width: textureBrowser.selectedTexture === modelData.path ? 2 : 1
+                        radius: 6
+                        
+                        // Smooth hover animations (no scale up)
+                        Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                        Behavior on border.color { ColorAnimation { duration: Theme.animDurationFast } }
+                        
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 6
+                            spacing: 4
+                            
+                            // Texture preview
+                            Rectangle {
+                                Layout.preferredWidth: 100
+                                Layout.preferredHeight: 100
+                                Layout.alignment: Qt.AlignHCenter
+                                color: Theme.inputBg
+                                border.color: Theme.inputBorder
+                                border.width: 1
+                                radius: 4
+                                
+                                // Thumbnail loading with delay to avoid spamming
+                                property string thumbnailSource: ""
+                                property bool thumbnailRequested: false
+                                
+                                Timer {
+                                    id: thumbnailTimer
+                                    interval: 50 + Math.random() * 100  // Stagger requests
+                                    onTriggered: {
+                                        if (!parent.thumbnailRequested && textureBrowser.app.materials_root.length > 0) {
+                                            parent.thumbnailRequested = true
+                                            var result = textureBrowser.textureProvider.get_thumbnail_for_texture(gridItemRect.modelData.path, textureBrowser.app.materials_root)
+                                            // Only set source if result is a valid file:// URL
+                                            if (result && result.length > 0 && result.toString().startsWith("file://")) {
+                                                parent.thumbnailSource = result
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                Component.onCompleted: thumbnailTimer.start()
+                                
+                                Image {
+                                    id: gridThumbnailImage
+                                    anchors.fill: parent
+                                    anchors.margins: 2
+                                    fillMode: Image.PreserveAspectFit
+                                    source: parent.thumbnailSource && parent.thumbnailSource.startsWith("file://") ? parent.thumbnailSource : ""
+                                    asynchronous: true
+                                    cache: true
+                                    
+                                    // Smooth fade-in when loaded
+                                    opacity: status === Image.Ready ? 1 : 0
+                                    Behavior on opacity { NumberAnimation { duration: Theme.animDurationNormal; easing.type: Theme.animEasing } }
+                                    
+                                    // Loading spinner - waiting for thumbnail request
+                                    Item {
+                                        id: waitingSpinner
+                                        anchors.centerIn: parent
+                                        width: 24
+                                        height: 24
+                                        visible: gridThumbnailImage.source === "" && !gridThumbnailImage.parent.thumbnailRequested
+                                        
+                                        Canvas {
+                                            anchors.centerIn: parent
+                                            width: 24
+                                            height: 24
+                                            
+                                            property real angle: 0
+                                            
+                                            NumberAnimation on angle {
+                                                from: 0
+                                                to: 360
+                                                duration: 800
+                                                loops: Animation.Infinite
+                                                running: waitingSpinner.visible
+                                            }
+                                            
+                                            onAngleChanged: requestPaint()
+                                            
+                                            onPaint: {
+                                                var ctx = getContext("2d")
+                                                ctx.reset()
+                                                ctx.strokeStyle = Theme.inputBorder
+                                                ctx.lineWidth = 2
+                                                ctx.beginPath()
+                                                ctx.arc(width/2, height/2, 9, 0, Math.PI * 2)
+                                                ctx.stroke()
+                                                ctx.strokeStyle = Theme.accent
+                                                ctx.lineCap = "round"
+                                                ctx.beginPath()
+                                                var startAngle = (angle - 90) * Math.PI / 180
+                                                var endAngle = (angle + 90) * Math.PI / 180
+                                                ctx.arc(width/2, height/2, 9, startAngle, endAngle)
+                                                ctx.stroke()
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Loading spinner - image actively loading
+                                    Item {
+                                        id: loadingImageSpinner
+                                        anchors.centerIn: parent
+                                        width: 24
+                                        height: 24
+                                        visible: gridThumbnailImage.status === Image.Loading
+                                        
+                                        Canvas {
+                                            anchors.centerIn: parent
+                                            width: 24
+                                            height: 24
+                                            
+                                            property real angle: 0
+                                            
+                                            NumberAnimation on angle {
+                                                from: 0
+                                                to: 360
+                                                duration: 600
+                                                loops: Animation.Infinite
+                                                running: loadingImageSpinner.visible
+                                            }
+                                            
+                                            onAngleChanged: requestPaint()
+                                            
+                                            onPaint: {
+                                                var ctx = getContext("2d")
+                                                ctx.reset()
+                                                ctx.strokeStyle = Theme.inputBorder
+                                                ctx.lineWidth = 2
+                                                ctx.beginPath()
+                                                ctx.arc(width/2, height/2, 9, 0, Math.PI * 2)
+                                                ctx.stroke()
+                                                ctx.strokeStyle = Theme.accent
+                                                ctx.lineCap = "round"
+                                                ctx.beginPath()
+                                                var startAngle = (angle - 90) * Math.PI / 180
+                                                var endAngle = (angle + 90) * Math.PI / 180
+                                                ctx.arc(width/2, height/2, 9, startAngle, endAngle)
+                                                ctx.stroke()
+                                            }
+                                        }
+                                    }
+                                    
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "?"
+                                        color: Theme.textDim
+                                        font.pixelSize: 24
+                                        visible: gridThumbnailImage.status === Image.Error || gridThumbnailImage.status === Image.Null
+                                    }
+                                }
+                                
+                                // Custom texture badge
+                                Rectangle {
+                                    visible: gridItemRect.modelData.isCustom === true
+                                    anchors.top: parent.top
+                                    anchors.right: parent.right
+                                    anchors.margins: 2
+                                    width: 16
+                                    height: 16
+                                    radius: 8
+                                    color: "#4CAF50"
+                                    border.color: "#2E7D32"
+                                    border.width: 1
+                                    
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "C"
+                                        color: "white"
+                                        font.pixelSize: 9
+                                        font.bold: true
+                                    }
+                                    
+                                    ToolTip.visible: customBadgeMouse.containsMouse
+                                    ToolTip.text: "Custom texture (on disk)"
+                                    ToolTip.delay: 500
+                                    
+                                    MouseArea {
+                                        id: customBadgeMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                    }
+                                }
+                            }
+                            
+                            // Texture name
+                            Text {
+                                Layout.fillWidth: true
+                                text: {
+                                    var parts = gridItemRect.modelData.path.split("/")
+                                    return parts[parts.length - 1]
+                                }
+                                color: Theme.textColor
+                                font.pixelSize: 10
+                                elide: Text.ElideMiddle
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                        }
+                        
+                        MouseArea {
+                            id: gridItemMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            
+                            onClicked: {
+                                textureGrid.currentIndex = gridItemRect.index
+                                textureBrowser.selectedTexture = gridItemRect.modelData.path
+                            }
+                            
+                            onDoubleClicked: {
+                                textureGrid.currentIndex = gridItemRect.index
+                                textureBrowser.selectedTexture = gridItemRect.modelData.path
+                                if (textureBrowser.openMode) {
+                                    // Open mode: load in preview pane
+                                    textureBrowser.textureProvider.load_from_material_path(gridItemRect.modelData.path, textureBrowser.app.materials_root)
+                                    textureBrowser.textureOpened(gridItemRect.modelData.path)
+                                } else if (textureBrowser.targetTextField) {
+                                    // Select mode: fill text field
+                                    textureBrowser.targetTextField.text = gridItemRect.modelData.path
+                                    textureBrowser.textureSelected(gridItemRect.modelData.path)
+                                }
+                                textureBrowser.close()
+                            }
+                        }
+                        
+                        ToolTip {
+                            visible: gridItemMouse.containsMouse
+                            text: gridItemRect.modelData.path + (textureBrowser.openMode ? "\nDouble-click to open" : "\nDouble-click to select")
+                            delay: 500
+                        }
+                    }
+                }
+            }
+            
+            // Loading overlay
+            Rectangle {
+                anchors.fill: parent
+                color: Qt.rgba(0, 0, 0, 0.7)
+                visible: textureBrowser.isLoading
+                opacity: textureBrowser.isLoading ? 1.0 : 0.0
+                
+                Behavior on opacity { NumberAnimation { duration: Theme.animDurationNormal } }
+                
+                Column {
+                    anchors.centerIn: parent
+                    spacing: 16
+                    
+                    // Animated loading spinner
+                    Canvas {
+                        id: loadingSpinner
+                        width: 48
+                        height: 48
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        
+                        property real angle: 0
+                        
+                        NumberAnimation on angle {
+                            from: 0
+                            to: 360
+                            duration: 1000
+                            loops: Animation.Infinite
+                            running: textureBrowser.isLoading
+                        }
+                        
+                        onAngleChanged: requestPaint()
+                        
+                        onPaint: {
+                            var ctx = getContext("2d")
+                            ctx.reset()
+                            ctx.strokeStyle = Theme.accent
+                            ctx.lineWidth = 4
+                            ctx.lineCap = "round"
+                            ctx.beginPath()
+                            var startAngle = (angle - 90) * Math.PI / 180
+                            var endAngle = (angle + 180) * Math.PI / 180
+                            ctx.arc(width/2, height/2, 18, startAngle, endAngle)
+                            ctx.stroke()
+                        }
+                    }
+                    
+                    Text {
+                        text: "Loading textures..."
+                        color: Theme.textColor
+                        font.pixelSize: 14
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                }
+            }
+        }
+        
+        // Footer with actions
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            
+            Text {
+                text: {
+                    if (textureBrowser.selectedTexture) {
+                        return textureBrowser.openMode 
+                            ? "Double-click or press Open to view texture" 
+                            : "Double-click or press Select to use texture"
+                    }
+                    return textureBrowser.openMode 
+                        ? "Click a texture to select, double-click to open" 
+                        : "Click a texture to select, double-click to use"
+                }
+                color: Theme.textDim
+                font.pixelSize: 11
+            }
+            
+            Item { Layout.fillWidth: true }
+            
+            Rectangle {
+                id: cancelBtn
+                width: 90
+                height: 32
+                radius: 4
+                color: cancelMouse.containsMouse || cancelBtn.activeFocus ? Theme.buttonHover : Theme.buttonBg
+                border.color: cancelBtn.activeFocus ? Theme.accent : "transparent"
+                border.width: 1
+                
+                activeFocusOnTab: true
+                Keys.onReturnPressed: textureBrowser.close()
+                Keys.onEnterPressed: textureBrowser.close()
+                Keys.onSpacePressed: textureBrowser.close()
+                
+                // Smooth hover animation
+                scale: cancelMouse.pressed ? 0.97 : 1.0
+                Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
+                Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                
+                Text {
+                    anchors.centerIn: parent
+                    text: "Cancel"
+                    color: Theme.textColor
+                    font.pixelSize: 13
+                }
+                
+                MouseArea {
+                    id: cancelMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: textureBrowser.close()
+                }
+            }
+            
+            Rectangle {
+                id: selectBtn
+                width: 90
+                height: 32
+                radius: 4
+                color: selectMouse.containsMouse || selectBtn.activeFocus ? Theme.accentHover : Theme.accent
+                border.color: selectBtn.activeFocus ? "#ffffff" : "transparent"
+                border.width: 1
+                opacity: textureBrowser.selectedTexture ? 1.0 : 0.5
+                
+                activeFocusOnTab: true
+                Keys.onReturnPressed: if (textureBrowser.selectedTexture) textureBrowser.selectCurrentTexture()
+                Keys.onEnterPressed: if (textureBrowser.selectedTexture) textureBrowser.selectCurrentTexture()
+                Keys.onSpacePressed: if (textureBrowser.selectedTexture) textureBrowser.selectCurrentTexture()
+                
+                // Smooth hover animation (scale down on press only)
+                scale: selectMouse.pressed && textureBrowser.selectedTexture ? 0.97 : 1.0
+                Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
+                Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                
+                Text {
+                    anchors.centerIn: parent
+                    text: textureBrowser.openMode ? "Open" : "Select"
+                    color: "white"
+                    font.pixelSize: 13
+                    font.bold: true
+                }
+                
+                MouseArea {
+                    id: selectMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: textureBrowser.selectedTexture ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    enabled: textureBrowser.selectedTexture !== ""
+                    onClicked: textureBrowser.selectCurrentTexture()
+                }
+            }
+        }
+    }
+}

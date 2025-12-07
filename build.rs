@@ -15,9 +15,18 @@ fn main() {
                 "src/bridge/application.rs",
             ],
             qml_files: &[
+                "qml/ThemeColors.js",
                 "qml/Main.qml",
-                "qml/ParameterDelegate.qml",
+                "qml/AppMenuBar.qml",
+                "qml/ParameterItemDelegate.qml",
                 "qml/PreviewPane.qml",
+                "qml/NewMaterialDialog.qml",
+                "qml/AddParameterDialog.qml",
+                "qml/AboutDialog.qml",
+                "qml/ColorPickerDialog.qml",
+                "qml/WelcomeDialog.qml",
+                "qml/ImageToVtfDialog.qml",
+                "qml/TextureBrowser.qml",
             ],
             ..Default::default()
         })

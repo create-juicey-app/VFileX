@@ -1,10 +1,18 @@
 module com.VFileX
 
 Main 1.0 Main.qml
-ParameterDelegate 1.0 ParameterDelegate.qml
+AppMenuBar 1.0 AppMenuBar.qml
+ParameterItemDelegate 1.0 ParameterItemDelegate.qml
 PreviewPane 1.0 PreviewPane.qml
 
-# Rust-backed types (registered via CXX-Qt)
+NewMaterialDialog 1.0 NewMaterialDialog.qml
+AddParameterDialog 1.0 AddParameterDialog.qml
+AboutDialog 1.0 AboutDialog.qml
+ColorPickerDialog 1.0 ColorPickerDialog.qml
+WelcomeDialog 1.0 WelcomeDialog.qml
+ImageToVtfDialog 1.0 ImageToVtfDialog.qml
+TextureBrowser 1.0 TextureBrowser.qml
+
 singleton VFileXApp 1.0
 MaterialModel 1.0
 TextureProvider 1.0
