@@ -32,7 +32,9 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y qt6-base-dev qt6-declarative-dev cmake ninja-build pkg-config
+          # Add Wayland dev (provides wayland-client.pc) plus some common Qt/native dev packages
+          sudo apt-get install -y libwayland-dev libxkbcommon-dev libx11-dev libxcb1-dev \
+            qt6-base-dev qt6-declarative-dev cmake ninja-build pkg-config
           echo "QT_QMAKE_EXECUTABLE=$(which qmake6 || which qmake)" >> $GITHUB_ENV
 
       # --- WINDOWS SETUP ---
