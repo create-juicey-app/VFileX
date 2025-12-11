@@ -3,24 +3,27 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import com.VFileX 1.0
-import "ThemeColors.js" as Theme
 
 MenuBar {
     id: menuBarRoot
     
-    // Theme colors (from Theme singleton)
-    readonly property color panelBg: Theme.panelBg
-    readonly property color panelBorder: Theme.panelBorder
-    readonly property color textColor: Theme.textColor
-    readonly property color textDim: Theme.textDim
-    readonly property color accent: Theme.accent
-    readonly property color buttonHover: Theme.buttonHover
-    readonly property int animDurationFast: Theme.animDurationFast
+    // Theme colors (from themeRoot)
+    readonly property color panelBg: themeRoot.panelBg
+    readonly property color panelBorder: themeRoot.panelBorder
+    readonly property color textColor: themeRoot.textColor
+    readonly property color textDim: themeRoot.textDim
+    readonly property color accent: themeRoot.accent
+    readonly property color buttonHover: themeRoot.buttonHover
+    readonly property int animDurationFast: themeRoot.animDurationFast
     
     required property var materialModel
     required property var previewPane
+    required property var app
+    required property var themeRoot
     
     property var shortcutMap: ({})
+    property string currentTheme: "Default"
+    property var availableThemes: []
     
     signal newMaterial()
     signal openFile()
@@ -34,9 +37,23 @@ MenuBar {
     signal selectGame()
     signal browseMaterialsFolder()
     signal showAbout()
+    signal themeChanged(string themeName)
     
     function getShortcutFor(text) {
         return shortcutMap[text] || ""
+    }
+    
+    function loadAvailableThemes() {
+        var themes = app.get_available_themes()
+        availableThemes = themes
+    }
+    
+    Component.onCompleted: {
+        loadAvailableThemes()
+        // Set current theme from app settings
+        if (app.theme !== "") {
+            currentTheme = app.theme
+        }
     }
     
     background: Rectangle { color: panelBg }
@@ -63,12 +80,13 @@ MenuBar {
             id: fileMenuItem
             contentItem: RowLayout {
                 spacing: 8
-                Image {
+                ThemedIcon {
                     source: fileMenuItem.icon.source
                     sourceSize: Qt.size(16, 16)
                     Layout.preferredWidth: 16
                     Layout.preferredHeight: 16
                     visible: fileMenuItem.icon.source != ""
+                    themeRoot: menuBarRoot.themeRoot
                 }
                 Text {
                     text: fileMenuItem.text
@@ -99,12 +117,13 @@ MenuBar {
                 id: openSpecificMenuItem
                 contentItem: RowLayout {
                     spacing: 8
-                    Image {
+                    ThemedIcon {
                         source: openSpecificMenuItem.icon.source
                         sourceSize: Qt.size(16, 16)
                         Layout.preferredWidth: 16
                         Layout.preferredHeight: 16
                         visible: openSpecificMenuItem.icon.source != ""
+                        themeRoot: menuBarRoot.themeRoot
                     }
                     Text {
                         text: openSpecificMenuItem.text
@@ -134,12 +153,13 @@ MenuBar {
             id: viewMenuItem
             contentItem: RowLayout {
                 spacing: 8
-                Image {
+                ThemedIcon {
                     source: viewMenuItem.icon.source
                     sourceSize: Qt.size(16, 16)
                     Layout.preferredWidth: 16
                     Layout.preferredHeight: 16
                     visible: viewMenuItem.icon.source != ""
+                    themeRoot: menuBarRoot.themeRoot
                 }
                 Text {
                     text: viewMenuItem.text
@@ -172,12 +192,13 @@ MenuBar {
             id: toolsMenuItem
             contentItem: RowLayout {
                 spacing: 8
-                Image {
+                ThemedIcon {
                     source: toolsMenuItem.icon.source
                     sourceSize: Qt.size(16, 16)
                     Layout.preferredWidth: 16
                     Layout.preferredHeight: 16
                     visible: toolsMenuItem.icon.source != ""
+                    themeRoot: menuBarRoot.themeRoot
                 }
                 Text {
                     text: toolsMenuItem.text
@@ -210,12 +231,13 @@ MenuBar {
             id: settingsMenuItem
             contentItem: RowLayout {
                 spacing: 8
-                Image {
+                ThemedIcon {
                     source: settingsMenuItem.icon.source
                     sourceSize: Qt.size(16, 16)
                     Layout.preferredWidth: 16
                     Layout.preferredHeight: 16
                     visible: settingsMenuItem.icon.source != ""
+                    themeRoot: menuBarRoot.themeRoot
                 }
                 Text {
                     text: settingsMenuItem.text
@@ -237,6 +259,62 @@ MenuBar {
         Action { text: "Select Game..."; icon.source: "qrc:/media/gamepad.svg"; onTriggered: menuBarRoot.selectGame() }
         Action { text: "Browse Materials Folder..."; icon.source: "qrc:/media/folder.svg"; onTriggered: menuBarRoot.browseMaterialsFolder() }
         MenuSeparator {}
+        
+        Menu {
+            id: themeSubmenu
+            title: "Theme"
+            
+            delegate: MenuItem {
+                id: themeMenuItem
+                contentItem: RowLayout {
+                    spacing: 8
+                    ThemedIcon {
+                        source: themeMenuItem.icon.source
+                        sourceSize: Qt.size(16, 16)
+                        Layout.preferredWidth: 16
+                        Layout.preferredHeight: 16
+                        visible: themeMenuItem.icon.source != ""
+                        themeRoot: menuBarRoot.themeRoot
+                    }
+                    Text {
+                        text: themeMenuItem.text
+                        color: textColor
+                        font: themeMenuItem.font
+                        Layout.fillWidth: true
+                    }
+                    Text {
+                        text: themeMenuItem.text === menuBarRoot.currentTheme ? "✓" : ""
+                        color: accent
+                        font.pixelSize: 12
+                    }
+                }
+                background: Rectangle { color: themeMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+            }
+            background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
+            
+            Instantiator {
+                model: menuBarRoot.availableThemes
+                delegate: Action {
+                    text: modelData
+                    icon.source: "qrc:/media/palette.svg"
+                    onTriggered: {
+                        menuBarRoot.currentTheme = modelData
+                        menuBarRoot.app.set_current_theme(modelData)
+                    }
+                }
+                onObjectAdded: (index, object) => themeSubmenu.insertAction(index, object)
+                onObjectRemoved: (index, object) => themeSubmenu.removeAction(object)
+            }
+            
+            MenuSeparator {}
+            Action { 
+                text: "Open Themes Folder..."
+                icon.source: "qrc:/media/folder.svg"
+                onTriggered: menuBarRoot.app.reveal_in_explorer(menuBarRoot.app.get_themes_dir())
+            }
+        }
+        
+        MenuSeparator {}
         Action { text: "Current: " + (menuBarRoot.selectedGame || "Not Set"); icon.source: "qrc:/media/info.svg"; enabled: false }
     }
     
@@ -246,12 +324,13 @@ MenuBar {
             id: helpMenuItem
             contentItem: RowLayout {
                 spacing: 8
-                Image {
+                ThemedIcon {
                     source: helpMenuItem.icon.source
                     sourceSize: Qt.size(16, 16)
                     Layout.preferredWidth: 16
                     Layout.preferredHeight: 16
                     visible: helpMenuItem.icon.source != ""
+                    themeRoot: menuBarRoot.themeRoot
                 }
                 Text {
                     text: helpMenuItem.text

@@ -3,12 +3,12 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import com.VFileX 1.0
-import "ThemeColors.js" as Theme
 
 Dialog {
     id: root
     
     required property VFileXApp app
+    required property var themeRoot
     
     signal gameSelected(string gameName, string gamePath)
     signal skipped()
@@ -19,7 +19,7 @@ Dialog {
     padding: 0
     closePolicy: Popup.NoAutoClose
     
-    Overlay.modal: Rectangle { color: Theme.overlayBg }
+    Overlay.modal: Rectangle { color: themeRoot.overlayBg }
     
     Keys.onEscapePressed: if (!isLoadingVPKs && selectedIndex >= 0) close()
     Keys.onReturnPressed: if (!isLoadingVPKs && selectedIndex >= 0) doSelectGame()
@@ -38,14 +38,14 @@ Dialog {
     // Smooth enter/exit animations
     enter: Transition {
         ParallelAnimation {
-            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.animDurationSlow; easing.type: Theme.animEasing }
-            NumberAnimation { property: "scale"; from: 0.9; to: 1; duration: Theme.animDurationSlow; easing.type: Theme.animEasingBounce }
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: themeRoot.animDurationSlow; easing.type: themeRoot.animEasing }
+            NumberAnimation { property: "scale"; from: 0.9; to: 1; duration: themeRoot.animDurationSlow; easing.type: themeRoot.animEasingBounce }
         }
     }
     exit: Transition {
         ParallelAnimation {
-            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.animDurationNormal; easing.type: Easing.InCubic }
-            NumberAnimation { property: "scale"; from: 1; to: 0.95; duration: Theme.animDurationNormal; easing.type: Easing.InCubic }
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: themeRoot.animDurationNormal; easing.type: Easing.InCubic }
+            NumberAnimation { property: "scale"; from: 1; to: 0.95; duration: themeRoot.animDurationNormal; easing.type: Easing.InCubic }
         }
     }
     
@@ -91,8 +91,8 @@ Dialog {
     }
     
     background: Rectangle {
-        color: Theme.panelBg
-        radius: 12
+        color: themeRoot.dialogBg
+        radius: themeRoot.dialogRadius
     }
     
     contentItem: ColumnLayout {
@@ -102,7 +102,7 @@ Dialog {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 80
-            color: Theme.accent
+            color: themeRoot.accent
             radius: 12
             
             Rectangle {
@@ -146,7 +146,7 @@ Dialog {
                     ? "We found these Source games installed. Select one to use its textures:"
                     : "No Source games detected. You can browse for a materials folder manually."
                 font.pixelSize: 13
-                color: Theme.textColor
+                color: themeRoot.textColor
                 wrapMode: Text.WordWrap
             }
             
@@ -154,8 +154,8 @@ Dialog {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 200
-                color: Theme.inputBg
-                border.color: gameListView.activeFocus ? Theme.accent : Theme.inputBorder
+                color: themeRoot.inputBg
+                border.color: gameListView.activeFocus ? themeRoot.accent : themeRoot.inputBorder
                 radius: 6
                 visible: root.detectedGames.length > 0
                 
@@ -182,13 +182,13 @@ Dialog {
                         id: gameItemRect
                         width: gameListView.width
                         height: 52
-                        color: root.selectedIndex === index ? Theme.accent : 
-                               (gameMouseArea.containsMouse ? Theme.buttonHover : "transparent")
+                        color: root.selectedIndex === index ? themeRoot.accent : 
+                               (gameMouseArea.containsMouse ? themeRoot.buttonHover : "transparent")
                         radius: 6
                         
                         scale: gameMouseArea.pressed ? 0.97 : 1.0
-                        Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
-                        Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                        Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
+                        Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
                         
                         RowLayout {
                             anchors.fill: parent
@@ -212,13 +212,14 @@ Dialog {
                                     mipmap: true
                                 }
                                 
-                                Image {
+                                ThemedIcon {
                                     anchors.centerIn: parent
                                     width: 24
                                     height: 24
                                     source: "qrc:/media/gamepad.svg"
                                     sourceSize: Qt.size(24, 24)
                                     visible: gameIcon.status !== Image.Ready
+                                    themeRoot: root.themeRoot
                                 }
                             }
                             
@@ -231,25 +232,26 @@ Dialog {
                                     text: modelData.name
                                     font.pixelSize: 14
                                     font.bold: true
-                                    color: root.selectedIndex === index ? "white" : Theme.textColor
+                                    color: root.selectedIndex === index ? "white" : themeRoot.textColor
                                 }
                                 
                                 Text {
                                     Layout.fillWidth: true
                                     text: modelData.path
                                     font.pixelSize: 10
-                                    color: root.selectedIndex === index ? Qt.rgba(1,1,1,0.7) : Theme.textDim
+                                    color: root.selectedIndex === index ? Qt.rgba(1,1,1,0.7) : themeRoot.textDim
                                     elide: Text.ElideMiddle
                                 }
                             }
                             
-                            Image {
+                            ThemedIcon {
                                 Layout.alignment: Qt.AlignVCenter
                                 width: 18
                                 height: 18
                                 visible: root.selectedIndex === index
                                 source: "qrc:/media/check.svg"
                                 sourceSize: Qt.size(18, 18)
+                                themeRoot: root.themeRoot
                             }
                         }
                         
@@ -273,13 +275,13 @@ Dialog {
                 id: browseManuallyBtn
                 Layout.fillWidth: true
                 Layout.preferredHeight: 52
-                color: browseMouseArea.containsMouse ? Theme.buttonHover : Theme.inputBg
-                border.color: Theme.inputBorder
+                color: browseMouseArea.containsMouse ? themeRoot.buttonHover : themeRoot.inputBg
+                border.color: themeRoot.inputBorder
                 radius: 6
                 
                 scale: browseMouseArea.pressed ? 0.97 : 1.0
-                Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
-                Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
+                Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
                 
                 RowLayout {
                     anchors.fill: parent
@@ -293,12 +295,13 @@ Dialog {
                         Layout.alignment: Qt.AlignVCenter
                         color: "transparent"
                         
-                        Image {
+                        ThemedIcon {
                             anchors.centerIn: parent
                             width: 24
                             height: 24
                             source: "qrc:/media/folder.svg"
                             sourceSize: Qt.size(24, 24)
+                            themeRoot: root.themeRoot
                         }
                     }
                     
@@ -307,7 +310,7 @@ Dialog {
                         Layout.alignment: Qt.AlignVCenter
                         text: "Browse for materials folder manually..."
                         font.pixelSize: 14
-                        color: Theme.textColor
+                        color: themeRoot.textColor
                     }
                 }
                 
@@ -331,8 +334,8 @@ Dialog {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: manualPathField.implicitHeight + 16
-                color: Theme.inputBg
-                border.color: Theme.inputBorder
+                color: themeRoot.inputBg
+                border.color: themeRoot.inputBorder
                 radius: 6
                 visible: manualPathField.text.length > 0
                 
@@ -341,7 +344,7 @@ Dialog {
                     anchors.fill: parent
                     anchors.margins: 4
                     background: null
-                    color: Theme.textColor
+                    color: themeRoot.textColor
                     font.pixelSize: 11
                     readOnly: true
                     text: root.selectedIndex >= 0 && root.detectedGames.length > 0
@@ -355,7 +358,7 @@ Dialog {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 60
-            color: Qt.darker(Theme.panelBg, 1.1)
+            color: Qt.darker(themeRoot.panelBg, 1.1)
             
             Rectangle {
                 anchors.top: parent.top
@@ -381,12 +384,12 @@ Dialog {
                     }
                     
                     scale: pressed ? 0.97 : 1.0
-                    Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
+                    Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
                     
                     contentItem: Text {
                         text: parent.text
                         font.pixelSize: 13
-                        color: Theme.textDim
+                        color: themeRoot.textDim
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -394,9 +397,9 @@ Dialog {
                     background: Rectangle {
                         implicitWidth: 100
                         implicitHeight: 32
-                        color: skipButton.hovered ? Theme.buttonHover : "transparent"
+                        color: skipButton.hovered ? themeRoot.buttonHover : "transparent"
                         radius: 4
-                        Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                        Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
                     }
                 }
                 
@@ -415,7 +418,7 @@ Dialog {
                     }
                     
                     scale: pressed ? 0.97 : 1.0
-                    Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
+                    Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
                     
                     contentItem: Row {
                         spacing: 8
@@ -460,7 +463,7 @@ Dialog {
                             text: continueButton.text
                             font.pixelSize: 13
                             font.bold: true
-                            color: continueButton.enabled ? "white" : Theme.textDim
+                            color: continueButton.enabled ? "white" : themeRoot.textDim
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
@@ -469,10 +472,10 @@ Dialog {
                         implicitWidth: 100
                         implicitHeight: 32
                         color: continueButton.enabled 
-                            ? (continueButton.hovered ? Theme.accentHover : Theme.accent)
-                            : Theme.buttonBg
+                            ? (continueButton.hovered ? themeRoot.accentHover : themeRoot.accent)
+                            : themeRoot.buttonBg
                         radius: 4
-                        Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                        Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
                     }
                 }
             }
@@ -481,7 +484,7 @@ Dialog {
                 visible: root.isLoadingVPKs && root.loadingMessage.length > 0
                 Layout.fillWidth: true
                 text: root.loadingMessage
-                color: Theme.textDim
+                color: themeRoot.textDim
                 font.pixelSize: 11
                 horizontalAlignment: Text.AlignHCenter
             }

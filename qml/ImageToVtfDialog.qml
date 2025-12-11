@@ -4,13 +4,13 @@ import QtQuick.Layouts
 import QtQuick.Dialogs
 
 import com.VFileX 1.0
-import "ThemeColors.js" as Theme
 
 Dialog {
     id: root
     
     required property VFileXApp app
     required property var urlToLocalPath
+    required property var themeRoot
     
     signal conversionComplete(int successCount, int totalCount)
     
@@ -20,7 +20,7 @@ Dialog {
     height: 550
     padding: 0
     
-    Overlay.modal: Rectangle { color: Theme.overlayBg }
+    Overlay.modal: Rectangle { color: themeRoot.overlayBg }
     
     property var selectedImages: []
     property string outputDirectory: ""
@@ -44,21 +44,21 @@ Dialog {
     
     enter: Transition {
         ParallelAnimation {
-            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.animDurationNormal; easing.type: Theme.animEasing }
-            NumberAnimation { property: "scale"; from: 0.9; to: 1; duration: Theme.animDurationNormal; easing.type: Theme.animEasingBounce }
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: themeRoot.animDurationNormal; easing.type: themeRoot.animEasing }
+            NumberAnimation { property: "scale"; from: 0.9; to: 1; duration: themeRoot.animDurationNormal; easing.type: themeRoot.animEasingBounce }
         }
     }
     exit: Transition {
         ParallelAnimation {
-            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.animDurationFast; easing.type: Easing.InCubic }
-            NumberAnimation { property: "scale"; from: 1; to: 0.95; duration: Theme.animDurationFast; easing.type: Easing.InCubic }
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: themeRoot.animDurationFast; easing.type: Easing.InCubic }
+            NumberAnimation { property: "scale"; from: 1; to: 0.95; duration: themeRoot.animDurationFast; easing.type: Easing.InCubic }
         }
     }
     
     background: Rectangle {
-        color: Theme.panelBg
-        border.color: Theme.panelBorder
-        radius: 8
+        color: themeRoot.dialogBg
+        border.color: themeRoot.dialogBorder
+        radius: themeRoot.dialogRadius
     }
     
     header: Item { height: 0 }
@@ -95,16 +95,17 @@ Dialog {
                 anchors.rightMargin: 16
                 spacing: 8
                 
-                Image {
+                ThemedIcon {
                     width: 18
                     height: 18
                     source: "qrc:/media/export.svg"
                     sourceSize: Qt.size(18, 18)
+                    themeRoot: root.themeRoot
                 }
                 
                 Text {
                     text: "Image to VTF Converter"
-                    color: Theme.textColor
+                    color: themeRoot.textColor
                     font.pixelSize: 16
                     font.bold: true
                 }
@@ -115,18 +116,19 @@ Dialog {
                     width: 28
                     height: 28
                     radius: 14
-                    color: vtfCloseBtn.containsMouse ? Theme.buttonHover : "transparent"
+                    color: vtfCloseBtn.containsMouse ? themeRoot.buttonHover : "transparent"
                     
                     scale: vtfCloseBtn.pressed ? 0.97 : 1.0
-                    Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
-                    Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                    Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
+                    Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
                     
-                    Image {
+                    ThemedIcon {
                         anchors.centerIn: parent
                         width: 12
                         height: 12
                         source: "qrc:/media/close.svg"
                         sourceSize: Qt.size(12, 12)
+                        themeRoot: root.themeRoot
                     }
                     
                     MouseArea {
@@ -143,7 +145,7 @@ Dialog {
                 anchors.bottom: parent.bottom
                 width: parent.width
                 height: 1
-                color: Theme.panelBorder
+                color: themeRoot.panelBorder
             }
         }
         
@@ -172,7 +174,7 @@ Dialog {
                         
                         Text {
                             text: "OUTPUT FOLDER"
-                            color: Theme.textDim
+                            color: themeRoot.textDim
                             font.pixelSize: 10
                             font.bold: true
                         }
@@ -180,8 +182,8 @@ Dialog {
                         Rectangle {
                             Layout.fillWidth: true
                             height: 32
-                            color: Theme.inputBg
-                            border.color: Theme.inputBorder
+                            color: themeRoot.inputBg
+                            border.color: themeRoot.inputBorder
                             radius: 4
                             
                             RowLayout {
@@ -196,17 +198,18 @@ Dialog {
                                         var parts = root.outputDirectory.split("/")
                                         return ".../" + parts.slice(-2).join("/")
                                     }
-                                    color: root.outputDirectory ? Theme.textColor : Theme.textDim
+                                    color: root.outputDirectory ? themeRoot.textColor : themeRoot.textDim
                                     font.pixelSize: 11
                                     elide: Text.ElideLeft
                                     verticalAlignment: Text.AlignVCenter
                                 }
                                 
-                                Image {
+                                ThemedIcon {
                                     width: 14
                                     height: 14
                                     source: "qrc:/media/folder.svg"
                                     sourceSize: Qt.size(14, 14)
+                                    themeRoot: root.themeRoot
                                 }
                             }
                             
@@ -223,7 +226,7 @@ Dialog {
                         }
                     }
                     
-                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.panelBorder }
+                    Rectangle { Layout.fillWidth: true; height: 1; color: themeRoot.panelBorder }
                     
                     ColumnLayout {
                         Layout.fillWidth: true
@@ -231,7 +234,7 @@ Dialog {
                         
                         Text {
                             text: "RESIZE"
-                            color: Theme.textDim
+                            color: themeRoot.textDim
                             font.pixelSize: 10
                             font.bold: true
                         }
@@ -245,15 +248,15 @@ Dialog {
                             
                             background: Rectangle {
                                 implicitHeight: 28
-                                color: Theme.inputBg
-                                border.color: Theme.inputBorder
+                                color: themeRoot.inputBg
+                                border.color: themeRoot.inputBorder
                                 radius: 4
                             }
                             
                             contentItem: Text {
                                 leftPadding: 8
                                 text: resizeModeCombo.displayText
-                                color: Theme.textColor
+                                color: themeRoot.textColor
                                 font.pixelSize: 11
                                 verticalAlignment: Text.AlignVCenter
                             }
@@ -267,7 +270,7 @@ Dialog {
                             TextField {
                                 Layout.fillWidth: true
                                 text: root.customWidth.toString()
-                                color: Theme.textColor
+                                color: themeRoot.textColor
                                 font.pixelSize: 11
                                 horizontalAlignment: Text.AlignHCenter
                                 validator: IntValidator { bottom: 1; top: 4096 }
@@ -277,18 +280,18 @@ Dialog {
                                 }
                                 background: Rectangle {
                                     implicitHeight: 26
-                                    color: Theme.inputBg
-                                    border.color: Theme.inputBorder
+                                    color: themeRoot.inputBg
+                                    border.color: themeRoot.inputBorder
                                     radius: 4
                                 }
                             }
                             
-                            Image { width: 16; height: 16; source: "qrc:/media/multiply.svg"; sourceSize: Qt.size(14, 14) }
+                            ThemedIcon { width: 16; height: 16; source: "qrc:/media/multiply.svg"; sourceSize: Qt.size(14, 14); themeRoot: root.themeRoot }
                             
                             TextField {
                                 Layout.fillWidth: true
                                 text: root.customHeight.toString()
-                                color: Theme.textColor
+                                color: themeRoot.textColor
                                 font.pixelSize: 11
                                 horizontalAlignment: Text.AlignHCenter
                                 validator: IntValidator { bottom: 1; top: 4096 }
@@ -298,15 +301,15 @@ Dialog {
                                 }
                                 background: Rectangle {
                                     implicitHeight: 26
-                                    color: Theme.inputBg
-                                    border.color: Theme.inputBorder
+                                    color: themeRoot.inputBg
+                                    border.color: themeRoot.inputBorder
                                     radius: 4
                                 }
                             }
                         }
                     }
                     
-                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.panelBorder }
+                    Rectangle { Layout.fillWidth: true; height: 1; color: themeRoot.panelBorder }
                     
                     ColumnLayout {
                         Layout.fillWidth: true
@@ -314,7 +317,7 @@ Dialog {
                         
                         Text {
                             text: "TEXTURE FLAGS"
-                            color: Theme.textDim
+                            color: themeRoot.textDim
                             font.pixelSize: 10
                             font.bold: true
                         }
@@ -326,7 +329,7 @@ Dialog {
                             contentItem: Text {
                                 leftPadding: vtfCheck.indicator.width + 6
                                 text: vtfCheck.label
-                                color: Theme.textColor
+                                color: themeRoot.textColor
                                 font.pixelSize: 11
                                 verticalAlignment: Text.AlignVCenter
                             }
@@ -337,15 +340,16 @@ Dialog {
                                 x: vtfCheck.leftPadding
                                 y: parent.height / 2 - height / 2
                                 radius: 3
-                                border.color: vtfCheck.checked ? Theme.accent : Theme.inputBorder
-                                color: vtfCheck.checked ? Theme.accent : "transparent"
+                                border.color: vtfCheck.checked ? themeRoot.accent : themeRoot.inputBorder
+                                color: vtfCheck.checked ? themeRoot.accent : "transparent"
                                 
-                                Image {
+                                ThemedIcon {
                                     anchors.centerIn: parent
                                     width: 10
                                     height: 10
                                     source: "qrc:/media/check.svg"
                                     sourceSize: Qt.size(10, 10)
+                                    themeRoot: root.themeRoot
                                     visible: vtfCheck.checked
                                 }
                             }
@@ -375,7 +379,7 @@ Dialog {
                     
                     Text {
                         text: "IMAGES (" + root.selectedImages.length + ")"
-                        color: Theme.textDim
+                        color: themeRoot.textDim
                         font.pixelSize: 10
                         font.bold: true
                     }
@@ -386,17 +390,17 @@ Dialog {
                         id: vtfAddBtn
                         Layout.preferredWidth: 70
                         Layout.preferredHeight: 26
-                        color: vtfAddBtnMouse.containsMouse ? Theme.accentHover : Theme.accent
+                        color: vtfAddBtnMouse.containsMouse ? themeRoot.accentHover : themeRoot.accent
                         radius: 4
                         
                         scale: vtfAddBtnMouse.pressed ? 0.97 : 1.0
-                        Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
-                        Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                        Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
+                        Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
                         
                         RowLayout {
                             anchors.centerIn: parent
                             spacing: 4
-                            Image { width: 12; height: 12; source: "qrc:/media/plus.svg"; sourceSize: Qt.size(12, 12) }
+                            ThemedIcon { width: 12; height: 12; source: "qrc:/media/plus.svg"; sourceSize: Qt.size(12, 12); themeRoot: root.themeRoot }
                             Text { text: "Add"; color: "white"; font.pixelSize: 11; font.bold: true }
                         }
                         
@@ -414,12 +418,12 @@ Dialog {
                         Layout.preferredWidth: 60
                         Layout.preferredHeight: 26
                         visible: root.selectedImages.length > 0
-                        color: vtfClearBtnMouse.containsMouse ? "#c0392b" : "#e74c3c"
+                        color: vtfClearBtnMouse.containsMouse ? themeRoot.dangerHover : themeRoot.dangerColor
                         radius: 4
                         
                         scale: vtfClearBtnMouse.pressed ? 0.97 : 1.0
-                        Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
-                        Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                        Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
+                        Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
                         
                         Text { anchors.centerIn: parent; text: "Clear"; color: "white"; font.pixelSize: 11; font.bold: true }
                         
@@ -436,8 +440,8 @@ Dialog {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    color: Theme.inputBg
-                    border.color: vtfDropArea.containsDrag ? Theme.accent : Theme.inputBorder
+                    color: themeRoot.inputBg
+                    border.color: vtfDropArea.containsDrag ? themeRoot.accent : themeRoot.inputBorder
                     border.width: vtfDropArea.containsDrag ? 2 : 1
                     radius: 6
                     
@@ -475,18 +479,19 @@ Dialog {
                         visible: root.selectedImages.length === 0
                         spacing: 12
                         
-                        Image {
+                        ThemedIcon {
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: 40; height: 40
                             source: "qrc:/media/image.svg"
                             sourceSize: Qt.size(40, 40)
+                            themeRoot: root.themeRoot
                             opacity: 0.5
                         }
                         
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: "Click to add images\nor drag & drop"
-                            color: Theme.textDim
+                            color: themeRoot.textDim
                             font.pixelSize: 12
                             horizontalAlignment: Text.AlignHCenter
                         }
@@ -494,7 +499,7 @@ Dialog {
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: "PNG, JPG, BMP, TGA, GIF"
-                            color: Theme.textDim
+                            color: themeRoot.textDim
                             font.pixelSize: 10
                             opacity: 0.7
                         }
@@ -525,7 +530,7 @@ Dialog {
                                 Rectangle {
                                     Layout.preferredWidth: 28
                                     Layout.preferredHeight: 28
-                                    color: Theme.buttonBg
+                                    color: themeRoot.buttonBg
                                     radius: 4
                                     
                                     Image {
@@ -544,7 +549,7 @@ Dialog {
                                     Text {
                                         Layout.fillWidth: true
                                         text: modelData.split("/").pop().split("\\").pop()
-                                        color: Theme.textColor
+                                        color: themeRoot.textColor
                                         font.pixelSize: 11
                                         elide: Text.ElideMiddle
                                     }
@@ -559,17 +564,17 @@ Dialog {
                                                 var parts = parent.info.split("|")
                                                 return parts[0]
                                             }
-                                            color: Theme.textDim
+                                            color: themeRoot.textDim
                                             font.pixelSize: 9
                                         }
-                                        Image { width: 12; height: 12; source: "qrc:/media/multiply.svg"; sourceSize: Qt.size(12, 12) }
+                                        ThemedIcon { width: 12; height: 12; source: "qrc:/media/multiply.svg"; sourceSize: Qt.size(12, 12); themeRoot: root.themeRoot }
                                         Text {
                                             text: {
                                                 if (parent.info.startsWith("ERR:")) return ""
                                                 var parts = parent.info.split("|")
                                                 return parts[1] + " px"
                                             }
-                                            color: Theme.textDim
+                                            color: themeRoot.textDim
                                             font.pixelSize: 9
                                         }
                                     }
@@ -579,14 +584,15 @@ Dialog {
                                     Layout.preferredWidth: 20
                                     Layout.preferredHeight: 20
                                     radius: 10
-                                    color: vtfRemoveBtn.containsMouse ? "#e74c3c" : "transparent"
+                                    color: vtfRemoveBtn.containsMouse ? themeRoot.dangerColor : "transparent"
                                     visible: vtfItemMouse.containsMouse
                                     
-                                    Image {
+                                    ThemedIcon {
                                         anchors.centerIn: parent
                                         width: 10; height: 10
                                         source: "qrc:/media/close.svg"
                                         sourceSize: Qt.size(10, 10)
+                                        themeRoot: root.themeRoot
                                     }
                                     
                                     MouseArea {
@@ -612,21 +618,21 @@ Dialog {
                     Layout.fillWidth: true
                     height: 20
                     visible: root.isConverting
-                    color: Theme.inputBg
-                    border.color: Theme.inputBorder
+                    color: themeRoot.inputBg
+                    border.color: themeRoot.inputBorder
                     radius: 4
                     
                     Rectangle {
                         width: parent.width * (root.convertTotal > 0 ? root.convertProgress / root.convertTotal : 0)
                         height: parent.height
-                        color: Theme.accent
+                        color: themeRoot.accent
                         radius: 4
                     }
                     
                     Text {
                         anchors.centerIn: parent
                         text: root.convertProgress + " / " + root.convertTotal
-                        color: Theme.textColor
+                        color: themeRoot.textColor
                         font.pixelSize: 10
                     }
                 }
@@ -641,14 +647,14 @@ Dialog {
                         id: vtfCancelBtn
                         width: 90
                         height: 32
-                        color: vtfCancelBtnMouse.containsMouse ? Theme.buttonHover : Theme.buttonBg
+                        color: vtfCancelBtnMouse.containsMouse ? themeRoot.buttonHover : themeRoot.buttonBg
                         radius: 4
                         
                         scale: vtfCancelBtnMouse.pressed ? 0.97 : 1.0
-                        Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
-                        Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                        Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
+                        Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
                         
-                        Text { anchors.centerIn: parent; text: "Cancel"; color: Theme.textColor; font.pixelSize: 13 }
+                        Text { anchors.centerIn: parent; text: "Cancel"; color: themeRoot.textColor; font.pixelSize: 13 }
                         
                         MouseArea {
                             id: vtfCancelBtnMouse
@@ -664,19 +670,19 @@ Dialog {
                         width: 130
                         height: 32
                         property bool btnEnabled: root.selectedImages.length > 0 && (root.outputDirectory.length > 0 || root.app.materials_root.length > 0) && !root.isConverting
-                        color: !btnEnabled ? Theme.buttonBg : (vtfConvertBtnMouse.containsMouse ? Theme.accentHover : Theme.accent)
+                        color: !btnEnabled ? themeRoot.buttonBg : (vtfConvertBtnMouse.containsMouse ? themeRoot.accentHover : themeRoot.accent)
                         radius: 4
                         opacity: btnEnabled ? 1.0 : 0.5
                         
                         scale: vtfConvertBtnMouse.pressed && btnEnabled ? 0.97 : 1.0
-                        Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
-                        Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
-                        Behavior on opacity { NumberAnimation { duration: Theme.animDurationFast } }
+                        Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
+                        Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
+                        Behavior on opacity { NumberAnimation { duration: themeRoot.animDurationFast } }
                         
                         RowLayout {
                             anchors.centerIn: parent
                             spacing: 6
-                            Image { width: 14; height: 14; source: "qrc:/media/download.svg"; sourceSize: Qt.size(14, 14); visible: !root.isConverting }
+                            ThemedIcon { width: 14; height: 14; source: "qrc:/media/download.svg"; sourceSize: Qt.size(14, 14); themeRoot: root.themeRoot; visible: !root.isConverting }
                             Text { text: root.isConverting ? "Converting..." : "Convert to VTF"; color: "white"; font.pixelSize: 13; font.bold: true }
                         }
                         

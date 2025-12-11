@@ -3,11 +3,11 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import com.VFileX 1.0
-import "ThemeColors.js" as Theme
 
 Dialog {
     id: root
     
+    required property var themeRoot
     signal addParameter(string name, string value)
     
     modal: true
@@ -15,7 +15,7 @@ Dialog {
     width: 400
     padding: 0
     
-    Overlay.modal: Rectangle { color: Theme.overlayBg }
+    Overlay.modal: Rectangle { color: themeRoot.overlayBg }
     
     Keys.onEscapePressed: close()
     
@@ -31,23 +31,23 @@ Dialog {
     // Smooth enter/exit animations
     enter: Transition {
         ParallelAnimation {
-            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.animDurationNormal; easing.type: Theme.animEasing }
-            NumberAnimation { property: "scale"; from: 0.9; to: 1; duration: Theme.animDurationNormal; easing.type: Theme.animEasingBounce }
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: themeRoot.animDurationNormal; easing.type: themeRoot.animEasing }
+            NumberAnimation { property: "scale"; from: 0.9; to: 1; duration: themeRoot.animDurationNormal; easing.type: themeRoot.animEasingBounce }
         }
     }
     exit: Transition {
         ParallelAnimation {
-            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.animDurationFast; easing.type: Easing.InCubic }
-            NumberAnimation { property: "scale"; from: 1; to: 0.95; duration: Theme.animDurationFast; easing.type: Easing.InCubic }
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: themeRoot.animDurationFast; easing.type: Easing.InCubic }
+            NumberAnimation { property: "scale"; from: 1; to: 0.95; duration: themeRoot.animDurationFast; easing.type: Easing.InCubic }
         }
     }
     
     onOpened: newParamName.forceActiveFocus()
     
     background: Rectangle {
-        color: Theme.panelBg
-        border.color: Theme.panelBorder
-        radius: 8
+        color: themeRoot.dialogBg
+        border.color: themeRoot.dialogBorder
+        radius: themeRoot.dialogRadius
     }
     
     header: Item { height: 0 }
@@ -60,12 +60,12 @@ Dialog {
         Rectangle {
             Layout.fillWidth: true
             height: 48
-            color: Theme.panelBg
+            color: themeRoot.dialogHeaderBg
             
             Text {
                 anchors.centerIn: parent
                 text: "Add Parameter"
-                color: Theme.textColor
+                color: themeRoot.textColor
                 font.pixelSize: 15
                 font.bold: true
             }
@@ -74,7 +74,7 @@ Dialog {
                 anchors.bottom: parent.bottom
                 width: parent.width
                 height: 1
-                color: Theme.panelBorder
+                color: themeRoot.separator
             }
         }
         
@@ -84,19 +84,19 @@ Dialog {
             Layout.margins: 20
             spacing: 12
             
-            Text { text: "Parameter Name:"; color: Theme.textColor; font.pixelSize: 12 }
+            Text { text: "Parameter Name:"; color: themeRoot.textColor; font.pixelSize: 12 }
             Rectangle {
                 Layout.fillWidth: true
                 height: 36
-                color: Theme.inputBg
-                border.color: newParamName.activeFocus ? Theme.accent : Theme.inputBorder
+                color: themeRoot.inputBg
+                border.color: newParamName.activeFocus ? themeRoot.accent : themeRoot.inputBorder
                 radius: 4
                 
                 TextInput {
                     id: newParamName
                     anchors.fill: parent
                     anchors.margins: 10
-                    color: Theme.textColor
+                    color: themeRoot.textColor
                     font.pixelSize: 13
                     verticalAlignment: Text.AlignVCenter
                     inputMethodHints: Qt.ImhNoPredictiveText
@@ -108,25 +108,25 @@ Dialog {
                     Text {
                         visible: !parent.text
                         text: "$parametername"
-                        color: Theme.textDim
+                        color: themeRoot.textDim
                         font.pixelSize: 13
                     }
                 }
             }
             
-            Text { text: "Value:"; color: Theme.textColor; font.pixelSize: 12 }
+            Text { text: "Value:"; color: themeRoot.textColor; font.pixelSize: 12 }
             Rectangle {
                 Layout.fillWidth: true
                 height: 36
-                color: Theme.inputBg
-                border.color: newParamValue.activeFocus ? Theme.accent : Theme.inputBorder
+                color: themeRoot.inputBg
+                border.color: newParamValue.activeFocus ? themeRoot.accent : themeRoot.inputBorder
                 radius: 4
                 
                 TextInput {
                     id: newParamValue
                     anchors.fill: parent
                     anchors.margins: 10
-                    color: Theme.textColor
+                    color: themeRoot.textColor
                     font.pixelSize: 13
                     verticalAlignment: Text.AlignVCenter
                     inputMethodHints: Qt.ImhNoPredictiveText
@@ -137,7 +137,7 @@ Dialog {
                     Text {
                         visible: !parent.text
                         text: "value"
-                        color: Theme.textDim
+                        color: themeRoot.textDim
                         font.pixelSize: 13
                     }
                 }
@@ -148,13 +148,13 @@ Dialog {
         Rectangle {
             Layout.fillWidth: true
             height: 56
-            color: "#1e1e1e"
+            color: themeRoot.dialogHeaderBg
             
             Rectangle {
                 anchors.top: parent.top
                 width: parent.width
                 height: 1
-                color: Theme.panelBorder
+                color: themeRoot.separator
             }
             
             RowLayout {
@@ -166,8 +166,8 @@ Dialog {
                     width: 90
                     height: 32
                     radius: 4
-                    color: cancelParamMouse.containsMouse || cancelParamBtn.activeFocus ? Theme.buttonHover : Theme.buttonBg
-                    border.color: cancelParamBtn.activeFocus ? Theme.accent : "transparent"
+                    color: cancelParamMouse.containsMouse || cancelParamBtn.activeFocus ? themeRoot.buttonHover : themeRoot.buttonBg
+                    border.color: cancelParamBtn.activeFocus ? themeRoot.accent : "transparent"
                     border.width: 1
                     
                     activeFocusOnTab: true
@@ -176,13 +176,13 @@ Dialog {
                     Keys.onSpacePressed: root.close()
                     
                     scale: cancelParamMouse.pressed ? 0.97 : 1.0
-                    Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
-                    Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                    Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
+                    Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
                     
                     Text {
                         anchors.centerIn: parent
                         text: "Cancel"
-                        color: Theme.textColor
+                        color: themeRoot.textColor
                         font.pixelSize: 13
                     }
                     
@@ -200,7 +200,7 @@ Dialog {
                     width: 90
                     height: 32
                     radius: 4
-                    color: okParamMouse.containsMouse || okParamBtn.activeFocus ? Theme.accentHover : Theme.accent
+                    color: okParamMouse.containsMouse || okParamBtn.activeFocus ? themeRoot.accentHover : themeRoot.accent
                     border.color: okParamBtn.activeFocus ? "#ffffff" : "transparent"
                     border.width: 1
                     
@@ -210,8 +210,8 @@ Dialog {
                     Keys.onSpacePressed: root.doAdd()
                     
                     scale: okParamMouse.pressed ? 0.97 : 1.0
-                    Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
-                    Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                    Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
+                    Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
                     
                     Text {
                         anchors.centerIn: parent

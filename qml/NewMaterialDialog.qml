@@ -3,12 +3,12 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import com.VFileX 1.0
-import "ThemeColors.js" as Theme
 
 Dialog {
     id: root
     
     required property var shaderModel
+    required property var themeRoot
     signal createMaterial(string shaderName)
     
     modal: true
@@ -16,7 +16,7 @@ Dialog {
     width: 400
     padding: 0
     
-    Overlay.modal: Rectangle { color: Theme.overlayBg }
+    Overlay.modal: Rectangle { color: themeRoot.overlayBg }
     
     Keys.onEscapePressed: close()
     Keys.onReturnPressed: { createMaterial(newShaderCombo.currentText); close() }
@@ -24,23 +24,23 @@ Dialog {
     
     enter: Transition {
         ParallelAnimation {
-            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.animDurationNormal; easing.type: Theme.animEasing }
-            NumberAnimation { property: "scale"; from: 0.9; to: 1; duration: Theme.animDurationNormal; easing.type: Theme.animEasingBounce }
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: themeRoot.animDurationNormal; easing.type: themeRoot.animEasing }
+            NumberAnimation { property: "scale"; from: 0.9; to: 1; duration: themeRoot.animDurationNormal; easing.type: themeRoot.animEasingBounce }
         }
     }
     exit: Transition {
         ParallelAnimation {
-            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.animDurationFast; easing.type: Easing.InCubic }
-            NumberAnimation { property: "scale"; from: 1; to: 0.95; duration: Theme.animDurationFast; easing.type: Easing.InCubic }
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: themeRoot.animDurationFast; easing.type: Easing.InCubic }
+            NumberAnimation { property: "scale"; from: 1; to: 0.95; duration: themeRoot.animDurationFast; easing.type: Easing.InCubic }
         }
     }
     
     onOpened: { newShaderCombo.setDefaultShader(); newShaderCombo.forceActiveFocus() }
     
     background: Rectangle {
-        color: Theme.panelBg
-        border.color: Theme.panelBorder
-        radius: 8
+        color: themeRoot.dialogBg
+        border.color: themeRoot.dialogBorder
+        radius: themeRoot.dialogRadius
     }
     
     header: Item { height: 0 }
@@ -53,22 +53,23 @@ Dialog {
         Rectangle {
             Layout.fillWidth: true
             height: 48
-            color: Theme.panelBg
+            color: themeRoot.dialogHeaderBg
             
             RowLayout {
                 anchors.centerIn: parent
                 spacing: 8
                 
-                Image {
+                ThemedIcon {
                     width: 18
                     height: 18
                     source: "qrc:/media/file-new.svg"
                     sourceSize: Qt.size(18, 18)
+                    themeRoot: root.themeRoot
                 }
                 
                 Text {
                     text: "New Material"
-                    color: Theme.textColor
+                    color: themeRoot.textColor
                     font.pixelSize: 15
                     font.bold: true
                 }
@@ -78,7 +79,7 @@ Dialog {
                 anchors.bottom: parent.bottom
                 width: parent.width
                 height: 1
-                color: Theme.panelBorder
+                color: themeRoot.separator
             }
         }
         
@@ -90,7 +91,7 @@ Dialog {
             
             Text {
                 text: "Select shader for new material:"
-                color: Theme.textColor
+                color: themeRoot.textColor
                 font.pixelSize: 12
             }
             
@@ -114,8 +115,8 @@ Dialog {
                 }
                 
                 background: Rectangle {
-                    color: newShaderCombo.pressed ? "#2a2d2e" : (newShaderCombo.hovered ? "#3c3c3c" : Theme.inputBg)
-                    border.color: newShaderCombo.activeFocus ? Theme.accent : Theme.inputBorder
+                    color: newShaderCombo.pressed ? themeRoot.buttonPressed : (newShaderCombo.hovered ? themeRoot.buttonHover : themeRoot.inputBg)
+                    border.color: newShaderCombo.activeFocus ? themeRoot.accent : themeRoot.inputBorder
                     border.width: 1
                     radius: 4
                 }
@@ -124,19 +125,20 @@ Dialog {
                     leftPadding: 12
                     rightPadding: 30
                     text: newShaderCombo.displayText
-                    color: Theme.textColor
+                    color: themeRoot.textColor
                     font: newShaderCombo.font
                     verticalAlignment: Text.AlignVCenter
                     elide: Text.ElideRight
                 }
                 
-                indicator: Image {
+                indicator: ThemedIcon {
                     x: parent.width - width - 12
                     anchors.verticalCenter: parent.verticalCenter
                     width: 10
                     height: 10
                     source: "qrc:/media/nav-arrow.svg"
                     sourceSize: Qt.size(10, 10)
+                    themeRoot: root.themeRoot
                 }
                 
                 delegate: ItemDelegate {
@@ -162,11 +164,11 @@ Dialog {
                             anchors.top: parent.top
                             width: parent.width
                             height: 1
-                            color: Theme.panelBorder
+                            color: themeRoot.panelBorder
                             visible: newShaderDelegate.isFirstInCategory && newShaderDelegate.index > 0
                         }
                         
-                        Image {
+                        ThemedIcon {
                             anchors.left: parent.left
                             anchors.leftMargin: 6
                             anchors.verticalCenter: parent.verticalCenter
@@ -175,6 +177,7 @@ Dialog {
                             visible: newShaderDelegate.isFirstInCategory
                             source: newShaderDelegate.model.category === "Common" ? "qrc:/media/star.svg" : "qrc:/media/star-outline.svg"
                             sourceSize: Qt.size(12, 12)
+                            themeRoot: root.themeRoot
                         }
                         
                         Text {
@@ -182,13 +185,13 @@ Dialog {
                             anchors.leftMargin: 24
                             anchors.verticalCenter: parent.verticalCenter
                             text: newShaderDelegate.model.name
-                            color: newShaderDelegate.highlighted ? "#ffffff" : Theme.textColor
+                            color: newShaderDelegate.highlighted ? themeRoot.textBright : themeRoot.textColor
                             font.pixelSize: 13
                         }
                     }
                     
                     background: Rectangle { 
-                        color: newShaderDelegate.highlighted ? Theme.accent : (newShaderDelegate.hovered ? "#3c3c3c" : "transparent")
+                        color: newShaderDelegate.highlighted ? themeRoot.accent : (newShaderDelegate.hovered ? themeRoot.listItemHover : "transparent")
                     }
                     highlighted: newShaderCombo.highlightedIndex === index
                 }
@@ -208,8 +211,8 @@ Dialog {
                     }
                     
                     background: Rectangle {
-                        color: "#1e1e1e"
-                        border.color: Theme.panelBorder
+                        color: themeRoot.dialogBg
+                        border.color: themeRoot.dialogBorder
                         border.width: 1
                         radius: 4
                     }
@@ -221,13 +224,13 @@ Dialog {
         Rectangle {
             Layout.fillWidth: true
             height: 56
-            color: "#1e1e1e"
+            color: themeRoot.dialogHeaderBg
             
             Rectangle {
                 anchors.top: parent.top
                 width: parent.width
                 height: 1
-                color: Theme.panelBorder
+                color: themeRoot.separator
             }
             
             RowLayout {
@@ -239,8 +242,8 @@ Dialog {
                     width: 90
                     height: 32
                     radius: 4
-                    color: cancelNewMouse.containsMouse || cancelNewBtn.activeFocus ? Theme.buttonHover : Theme.buttonBg
-                    border.color: cancelNewBtn.activeFocus ? Theme.accent : "transparent"
+                    color: cancelNewMouse.containsMouse || cancelNewBtn.activeFocus ? themeRoot.buttonHover : themeRoot.buttonBg
+                    border.color: cancelNewBtn.activeFocus ? themeRoot.accent : "transparent"
                     border.width: 1
                     
                     focus: false
@@ -250,13 +253,13 @@ Dialog {
                     Keys.onSpacePressed: root.close()
                     
                     scale: cancelNewMouse.pressed ? 0.97 : 1.0
-                    Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
-                    Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                    Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
+                    Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
                     
                     Text {
                         anchors.centerIn: parent
                         text: "Cancel"
-                        color: Theme.textColor
+                        color: themeRoot.textColor
                         font.pixelSize: 13
                     }
                     
@@ -274,7 +277,7 @@ Dialog {
                     width: 90
                     height: 32
                     radius: 4
-                    color: okNewMouse.containsMouse || createNewBtn.activeFocus ? Theme.accentHover : Theme.accent
+                    color: okNewMouse.containsMouse || createNewBtn.activeFocus ? themeRoot.accentHover : themeRoot.accent
                     border.color: createNewBtn.activeFocus ? "#ffffff" : "transparent"
                     border.width: 1
                     
@@ -285,8 +288,8 @@ Dialog {
                     Keys.onSpacePressed: { root.createMaterial(newShaderCombo.currentText); root.close() }
                     
                     scale: okNewMouse.pressed ? 0.97 : 1.0
-                    Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
-                    Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                    Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
+                    Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
                     
                     Text {
                         anchors.centerIn: parent

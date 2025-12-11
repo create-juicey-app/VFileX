@@ -4,6 +4,7 @@ Main 1.0 Main.qml
 AppMenuBar 1.0 AppMenuBar.qml
 ParameterItemDelegate 1.0 ParameterItemDelegate.qml
 PreviewPane 1.0 PreviewPane.qml
+ThemedIcon 1.0 ThemedIcon.qml
 
 NewMaterialDialog 1.0 NewMaterialDialog.qml
 AddParameterDialog 1.0 AddParameterDialog.qml

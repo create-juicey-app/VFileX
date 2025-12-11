@@ -3,7 +3,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import com.VFileX 1.0
-import "ThemeColors.js" as Theme
 
 Rectangle {
     id: delegateRoot
@@ -17,6 +16,7 @@ Rectangle {
     required property real paramMinValue
     required property real paramMaxValue
     required property string paramCategory
+    required property var themeRoot
     
     // Function to initialize texture thumbnail - called from multiple places
     function tryLoadTextureThumbnail() {
@@ -65,23 +65,23 @@ Rectangle {
     property real pMaxValue: paramMaxValue || 1
     
     // Theme colors (use Theme singleton)
-    readonly property color panelBg: Theme.panelBg
-    readonly property color panelBorder: Theme.panelBorder
-    readonly property color inputBg: Theme.inputBg
-    readonly property color inputBorder: Theme.inputBorder
-    readonly property color textColor: Theme.textColor
-    readonly property color textDim: Theme.textDim
-    readonly property color accent: Theme.accent
-    readonly property color accentHover: Theme.accentHover
-    readonly property int animDurationFast: Theme.animDurationFast
-    readonly property int animDurationNormal: Theme.animDurationNormal
-    readonly property int animEasing: Theme.animEasing
-    readonly property int themeRadius: Theme.radius
+    readonly property color panelBg: themeRoot.panelBg
+    readonly property color panelBorder: themeRoot.panelBorder
+    readonly property color inputBg: themeRoot.inputBg
+    readonly property color inputBorder: themeRoot.inputBorder
+    readonly property color textColor: themeRoot.textColor
+    readonly property color textDim: themeRoot.textDim
+    readonly property color accent: themeRoot.accent
+    readonly property color accentHover: themeRoot.accentHover
+    readonly property int animDurationFast: themeRoot.animDurationFast
+    readonly property int animDurationNormal: themeRoot.animDurationNormal
+    readonly property int animEasing: themeRoot.animEasing
+    readonly property int themeRadius: themeRoot.radius
     
     width: listWidth - 10 - scrollBarWidth
     height: isCollapsed ? 0 : paramContent.height + 16
     visible: !isCollapsed
-    color: paramMouse.containsMouse ? "#2a2d2e" : "transparent"
+    color: paramMouse.containsMouse ? themeRoot.listItemHover : "transparent"
     radius: themeRadius
     border.color: panelBorder
     border.width: visible ? 1 : 0

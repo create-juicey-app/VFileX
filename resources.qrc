@@ -42,4 +42,11 @@
         <file>media/warning.svg</file>
     <file>media/clipboard.svg</file>
     </qresource>
+    <qresource prefix="/themes">
+        <file alias="Default.toml">resources/themes/Default.toml</file>
+        <file alias="Light.toml">resources/themes/Light.toml</file>
+        <file alias="Dracula.toml">resources/themes/Dracula.toml</file>
+        <file alias="ClassicSteam.toml">resources/themes/ClassicSteam.toml</file>
+        <file alias="Monokai.toml">resources/themes/Monokai.toml</file>
+    </qresource>
 </RCC>

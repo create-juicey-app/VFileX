@@ -1,0 +1,83 @@
+# VFileX Theme - Default (Dark)
+# You can copy this file and modify it to create custom themes
+
+[colors]
+# Main background
+windowBg = "#1e1e1e"
+
+# Panel colors
+panelBg = "#252526"
+panelBorder = "#3c3c3c"
+
+# Dialog/Modal colors
+dialogBg = "#2d2d30"
+dialogBorder = "#3c3c3c"
+dialogHeaderBg = "#252526"
+
+# Accent colors
+accent = "#0e639c"
+accentHover = "#1177bb"
+accentPressed = "#094771"
+
+# Input colors
+inputBg = "#3c3c3c"
+inputBorder = "#5a5a5a"
+inputFocusBorder = "#0e639c"
+
+# Text colors
+textColor = "#e0e0e0"
+textDim = "#888888"
+textBright = "#ffffff"
+
+# Icon color (for SVG icons)
+iconColor = "#e0e0e0"
+
+# Button colors
+buttonBg = "#3c3c3c"
+buttonHover = "#4a4a4a"
+buttonPressed = "#5a5a5a"
+
+# Secondary button colors
+buttonSecondaryBg = "#3c3c3c"
+buttonSecondaryHover = "#4a4a4a"
+buttonSecondaryText = "#e0e0e0"
+
+# Danger button (for delete, close, etc.)
+dangerColor = "#c42b1c"
+dangerHover = "#d83b2b"
+
+# Status colors
+success = "#4CAF50"
+warning = "#ff9800"
+error = "#f44336"
+
+# List/Grid item colors
+listItemBg = "transparent"
+listItemHover = "#2a2d2e"
+listItemSelected = "#094771"
+
+# Separator/Divider
+separator = "#3c3c3c"
+
+# Dialog overlay
+overlayBg = "#99000000"
+
+# Shadow
+shadowColor = "#40000000"
+
+[appearance]
+# Border radius
+radius = 6
+radiusSmall = 4
+radiusLarge = 12
+dialogRadius = 8
+
+[animation]
+# Animation durations (ms)
+animDurationFast = 120
+animDurationNormal = 200
+animDurationSlow = 350
+
+# Easing types
+animEasing = 3
+animEasingBounce = 34

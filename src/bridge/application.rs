@@ -198,6 +198,28 @@ pub mod qobject {
         // Returns number of successful conversions
         #[qinvokable]
     fn batch_import_images_to_vtf(self: &VFileXApp, image_paths: &QStringList, output_dir: &QString, generate_mipmaps: bool, is_normal_map: bool, clamp: bool, no_lod: bool, resize_mode: i32, custom_width: i32, custom_height: i32) -> i32;
+
+        // Get list of available themes
+        // Returns list of theme names (without .toml extension)
+        #[qinvokable]
+        fn get_available_themes(self: &VFileXApp) -> QStringList;
+
+        // Get theme content as JSON string for parsing in QML
+        // Returns JSON object with theme colors, or empty string if theme not found
+        #[qinvokable]
+        fn get_theme_content(self: &VFileXApp, theme_name: &QString) -> QString;
+
+        // Get the themes directory path
+        #[qinvokable]
+        fn get_themes_dir(self: &VFileXApp) -> QString;
+
+        // Create default theme file if it doesn't exist
+        #[qinvokable]
+        fn ensure_default_theme(self: &VFileXApp);
+
+        // Set current theme
+        #[qinvokable]
+        fn set_current_theme(self: Pin<&mut VFileXApp>, theme_name: &QString);
     }
 
     // Signals
@@ -205,6 +227,10 @@ pub mod qobject {
         // Emitted when settings change
         #[qsignal]
         fn settings_changed(self: Pin<&mut VFileXApp>);
+
+        // Emitted when theme content changes (with parsed JSON)
+        #[qsignal]
+        fn theme_content_changed(self: Pin<&mut VFileXApp>, theme_content: QString);
 
         // Emitted on status message
         #[qsignal]
@@ -225,6 +251,7 @@ pub mod qobject {
 }
 
 use crate::schema::ShaderRegistry;
+use crate::bridge::qt_helpers;
 use crate::vpk_archive::{count_vpk_archives, VPK_MANAGER};
 use crate::vtf::{VtfBuilder, VtfDecoder, VtfError};
 use qobject::*;
@@ -1211,6 +1238,219 @@ auto_save = {}
         
         success_count
     }
+
+    // Get the themes directory path
+    fn get_themes_dir(&self) -> QString {
+        let themes_path = dirs::config_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("VFileX")
+            .join("themes");
+        QString::from(themes_path.to_string_lossy().as_ref())
+    }
+
+    // Get list of available themes
+    fn get_available_themes(&self) -> QStringList {
+        let themes_dir = dirs::config_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("VFileX")
+            .join("themes");
+
+        let mut themes: Vec<cxx_qt_lib::QString> = Vec::new();
+        
+        // Always include Default first
+        themes.push(QString::from("Default"));
+        
+        if let Ok(entries) = std::fs::read_dir(&themes_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() {
+                    if let Some(ext) = path.extension() {
+                        if ext == "toml" {
+                            if let Some(stem) = path.file_stem() {
+                                let name = stem.to_string_lossy().to_string();
+                                // Don't duplicate Default
+                                if name != "Default" {
+                                    themes.push(QString::from(name.as_str()));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        let qlist: cxx_qt_lib::QList<cxx_qt_lib::QString> = themes.into();
+        QStringList::from(&qlist)
+    }
+
+    // Get theme content as JSON string
+    fn get_theme_content(&self, theme_name: &QString) -> QString {
+        let name = theme_name.to_string();
+        let themes_dir = dirs::config_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("VFileX")
+            .join("themes");
+        
+        let theme_path = themes_dir.join(format!("{}.toml", name));
+        
+        // Try to read from user's themes directory first.
+        if let Ok(content) = std::fs::read_to_string(&theme_path) {
+            // Parse TOML and convert to JSON for QML
+            let mut json_obj = serde_json::Map::new();
+            
+            for line in content.lines() {
+                let line = line.trim();
+                if line.is_empty() || line.starts_with('#') || line.starts_with('[') {
+                    continue;
+                }
+                
+                if let Some((key, value)) = line.split_once('=') {
+                    let key = key.trim();
+                    let value = value.trim().trim_matches('"');
+                    
+                    // Try to parse as number first, else keep as string
+                    if let Ok(num) = value.parse::<i64>() {
+                        json_obj.insert(key.to_string(), serde_json::Value::Number(num.into()));
+                    } else if let Ok(num) = value.parse::<f64>() {
+                        json_obj.insert(key.to_string(), serde_json::json!(num));
+                    } else {
+                        json_obj.insert(key.to_string(), serde_json::Value::String(value.to_string()));
+                    }
+                }
+            }
+            
+            if let Ok(json_str) = serde_json::to_string(&json_obj) {
+                return QString::from(json_str.as_str());
+            }
+        }
+        
+        // If not found on disk, try to read from embedded resource (qrc)
+        let res_path = format!(":/themes/{}.toml", name);
+        let res_content = qt_helpers::read_resource_file(&res_path);
+        if !res_content.is_empty() {
+            // Convert TOML to JSON using same parser logic
+            let mut json_obj = serde_json::Map::new();
+            for line in res_content.lines() {
+                let line = line.trim();
+                if line.is_empty() || line.starts_with('#') || line.starts_with('[') {
+                    continue;
+                }
+                if let Some((key, value)) = line.split_once('=') {
+                    let key = key.trim();
+                    let value = value.trim().trim_matches('"');
+                    if let Ok(num) = value.parse::<i64>() {
+                        json_obj.insert(key.to_string(), serde_json::Value::Number(num.into()));
+                    } else if let Ok(num) = value.parse::<f64>() {
+                        json_obj.insert(key.to_string(), serde_json::json!(num));
+                    } else {
+                        json_obj.insert(key.to_string(), serde_json::Value::String(value.to_string()));
+                    }
+                }
+            }
+            if let Ok(json_str) = serde_json::to_string(&json_obj) {
+                return QString::from(json_str.as_str());
+            }
+        }
+
+        // Return default theme JSON if file not found anywhere
+        QString::from(get_default_theme_json())
+    }
+
+    // Create default theme file if it doesn't exist
+    fn ensure_default_theme(&self) {
+        let themes_dir = dirs::config_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("VFileX")
+            .join("themes");
+        
+        // Create themes directory if needed
+        let _ = std::fs::create_dir_all(&themes_dir);
+        
+        // List of themes embedded in the Qt resources that should be copied
+        // into the user's config directory on first run.
+        let shipped_themes = [
+            "Default.toml",
+            "Light.toml",
+            "Dracula.toml",
+            "ClassicSteam.toml",
+            "Monokai.toml",
+        ];
+
+        for theme_file in &shipped_themes {
+            let dest_path = themes_dir.join(theme_file);
+            if !dest_path.exists() {
+                // Read from Qt resource path (qrc). We expose a helper that reads
+                // resource content using Qt's QFile, since the qrc is compiled into
+                // the binary via resources.qrc.
+                let res_path = format!(":/themes/{}", theme_file);
+                let content = qt_helpers::read_resource_file(&res_path);
+                if !content.is_empty() {
+                    let _ = std::fs::write(&dest_path, content);
+                }
+            }
+        }
+    }
+
+    // Set current theme
+    fn set_current_theme(mut self: Pin<&mut Self>, theme_name: &QString) {
+        self.as_mut().set_theme(theme_name.clone());
+        
+        // Get theme content and emit signal
+        let content = self.get_theme_content(theme_name);
+        self.as_mut().theme_content_changed(content);
+        
+        // Save settings
+        self.save_settings();
+    }
+}
+
+// Default theme TOML is embedded in resources/themes and copied at runtime
+// Default theme toml is now stored in resources/themes/*.toml. We ship themes
+// inside the Qt resource and copy them into the user's config dir on first-run.
+
+// Default theme as JSON for QML
+fn get_default_theme_json() -> &'static str {
+    // Read the embedded Default.toml from the Qt resources and return a flat
+    // JSON string suitable for QML. If parsing fails, return a minimal hardcoded
+    // default JSON as a safety fallback.
+    match qt_helpers::read_resource_file(":/themes/Default.toml") {
+        s if s.len() > 0 => {
+            if let Ok(toml_val) = toml::from_str::<toml::Value>(&s) {
+                // Flatten sections (like [colors], [appearance]) to top-level keys
+                let mut flat = serde_json::Map::new();
+                if let toml::Value::Table(t) = toml_val {
+                    for (k, v) in t.into_iter() {
+                        match v {
+                            toml::Value::Table(inner) => {
+                                for (ik, iv) in inner.into_iter() {
+                                    if let Ok(jv) = serde_json::to_value(iv) {
+                                        flat.insert(ik, jv);
+                                    }
+                                }
+                            }
+                            other => {
+                                if let Ok(jv) = serde_json::to_value(other) {
+                                    flat.insert(k, jv);
+                                }
+                            }
+                        }
+                    }
+                }
+                if let Ok(json) = serde_json::to_string(&flat) {
+                    // Leak into static str (OK for small text) to satisfy ffi signature
+                    // We return a string owned by the program; to make it &'static we
+                    // allocate it in the heap and leak it intentionally. This mirrors
+                    // previous behavior where a &'static str was returned.
+                    let boxed = Box::leak(json.into_boxed_str());
+                    return boxed;
+                }
+            }
+        }
+        _ => {}
+    }
+
+    // Minimal fallback JSON
+    "{\"windowBg\":\"#1e1e1e\",\"panelBg\":\"#252526\",\"panelBorder\":\"#3c3c3c\"}"
 }
 
 impl VFileXAppRust {

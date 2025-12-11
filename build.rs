@@ -20,6 +20,7 @@ fn main() {
                 "qml/AppMenuBar.qml",
                 "qml/ParameterItemDelegate.qml",
                 "qml/PreviewPane.qml",
+                "qml/ThemedIcon.qml",
                 "qml/NewMaterialDialog.qml",
                 "qml/AddParameterDialog.qml",
                 "qml/AboutDialog.qml",

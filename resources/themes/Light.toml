@@ -1,0 +1,83 @@
+# VFileX Theme - Light
+# A clean light theme for VFileX
+
+[colors]
+# Main background
+windowBg = "#f5f5f5"
+
+# Panel colors
+panelBg = "#ffffff"
+panelBorder = "#d0d0d0"
+
+# Dialog/Modal colors
+dialogBg = "#ffffff"
+dialogBorder = "#d0d0d0"
+dialogHeaderBg = "#f0f0f0"
+
+# Accent colors
+accent = "#0078d4"
+accentHover = "#106ebe"
+accentPressed = "#005a9e"
+
+# Input colors
+inputBg = "#ffffff"
+inputBorder = "#c0c0c0"
+inputFocusBorder = "#0078d4"
+
+# Text colors
+textColor = "#1e1e1e"
+textDim = "#666666"
+textBright = "#000000"
+
+# Icon color
+iconColor = "#333333"
+
+# Button colors
+buttonBg = "#e6e6e6"
+buttonHover = "#d4d4d4"
+buttonPressed = "#c0c0c0"
+
+# Secondary button colors
+buttonSecondaryBg = "#e6e6e6"
+buttonSecondaryHover = "#d4d4d4"
+buttonSecondaryText = "#1e1e1e"
+
+# Danger button (for delete, close, etc.)
+dangerColor = "#d13438"
+dangerHover = "#e63e42"
+
+# Status colors
+success = "#107c10"
+warning = "#ff8c00"
+error = "#d13438"
+
+# List/Grid item colors
+listItemBg = "transparent"
+listItemHover = "#e8e8e8"
+listItemSelected = "#cce4f7"
+
+# Separator/Divider
+separator = "#d0d0d0"
+
+# Dialog overlay
+overlayBg = "#66000000"
+
+# Shadow
+shadowColor = "#40000000"
+
+[appearance]
+# Border radius
+radius = 6
+radiusSmall = 4
+radiusLarge = 12
+dialogRadius = 8
+
+[animation]
+# Animation durations (ms)
+animDurationFast = 120
+animDurationNormal = 200
+animDurationSlow = 350
+
+# Easing types
+animEasing = 3
+animEasingBounce = 34

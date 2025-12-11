@@ -3,13 +3,13 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import com.VFileX 1.0
-import "ThemeColors.js" as Theme
 
 Popup {
     id: textureBrowser
     
     required property var app
     required property var textureProvider
+    required property var themeRoot
     
     property TextField targetTextField: null
     property string selectedTexture: ""
@@ -26,7 +26,7 @@ Popup {
     modal: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     
-    Overlay.modal: Rectangle { color: Theme.overlayBg }
+    Overlay.modal: Rectangle { color: themeRoot.overlayBg }
     
     Keys.onEscapePressed: close()
     Keys.onReturnPressed: if (selectedTexture) selectCurrentTexture()
@@ -49,20 +49,20 @@ Popup {
     // Smooth enter/exit animations
     enter: Transition {
         ParallelAnimation {
-            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.animDurationNormal; easing.type: Theme.animEasing }
-            NumberAnimation { property: "scale"; from: 0.95; to: 1; duration: Theme.animDurationNormal; easing.type: Theme.animEasingBounce }
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: themeRoot.animDurationNormal; easing.type: themeRoot.animEasing }
+            NumberAnimation { property: "scale"; from: 0.95; to: 1; duration: themeRoot.animDurationNormal; easing.type: themeRoot.animEasingBounce }
         }
     }
     exit: Transition {
         ParallelAnimation {
-            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.animDurationFast; easing.type: Easing.InCubic }
-            NumberAnimation { property: "scale"; from: 1; to: 0.98; duration: Theme.animDurationFast; easing.type: Easing.InCubic }
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: themeRoot.animDurationFast; easing.type: Easing.InCubic }
+            NumberAnimation { property: "scale"; from: 1; to: 0.98; duration: themeRoot.animDurationFast; easing.type: Easing.InCubic }
         }
     }
     
     background: Rectangle {
-        color: Theme.panelBg
-        border.color: Theme.panelBorder
+        color: themeRoot.panelBg
+        border.color: themeRoot.panelBorder
         border.width: 1
         radius: 8
     }
@@ -169,16 +169,17 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             
-            Image {
+            ThemedIcon {
                 width: 20
                 height: 20
                 source: "qrc:/media/texture.svg"
                 sourceSize: Qt.size(20, 20)
+                themeRoot: textureBrowser.themeRoot
             }
             
             Text {
                 text: textureBrowser.openMode ? "Texture Browser - Open" : "Texture Browser - Select"
-                color: Theme.textColor
+                color: themeRoot.textColor
                 font.pixelSize: 18
                 font.bold: true
             }
@@ -189,8 +190,8 @@ Popup {
             Rectangle {
                 Layout.preferredWidth: 300
                 Layout.preferredHeight: 32
-                color: Theme.inputBg
-                border.color: searchField.activeFocus ? Theme.accent : Theme.inputBorder
+                color: themeRoot.inputBg
+                border.color: searchField.activeFocus ? themeRoot.accent : themeRoot.inputBorder
                 border.width: 1
                 radius: 4
                 
@@ -199,11 +200,12 @@ Popup {
                     anchors.margins: 4
                     spacing: 8
                     
-                    Image {
+                    ThemedIcon {
                         width: 14
                         height: 14
                         source: "qrc:/media/search.svg"
                         sourceSize: Qt.size(14, 14)
+                        themeRoot: textureBrowser.themeRoot
                     }
                     
                     TextField {
@@ -227,16 +229,17 @@ Popup {
                         }
                         
                         background: Rectangle { color: "transparent" }
-                        color: Theme.textColor
+                        color: themeRoot.textColor
                         font.pixelSize: 13
                     }
                     
                     // Clear button
-                    Image {
+                    ThemedIcon {
                         width: 10
                         height: 10
                         source: "qrc:/media/close.svg"
                         sourceSize: Qt.size(10, 10)
+                        themeRoot: textureBrowser.themeRoot
                         visible: searchField.text.length > 0
                         opacity: clearSearchMouse.containsMouse ? 1.0 : 0.6
                         
@@ -258,19 +261,20 @@ Popup {
                 Layout.preferredWidth: 32
                 Layout.preferredHeight: 32
                 radius: 4
-                color: closeBrowserMouse.containsMouse ? "#c42b1c" : Theme.inputBg
+                color: closeBrowserMouse.containsMouse ? themeRoot.dangerColor : themeRoot.inputBg
                 
                 // Smooth hover animation
                 scale: closeBrowserMouse.pressed ? 0.97 : 1.0
-                Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
-                Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
+                Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
                 
-                Image {
+                ThemedIcon {
                     anchors.centerIn: parent
                     width: 14
                     height: 14
                     source: "qrc:/media/close.svg"
                     sourceSize: Qt.size(14, 14)
+                    themeRoot: textureBrowser.themeRoot
                 }
                 
                 MouseArea {
@@ -296,20 +300,20 @@ Popup {
                     width: categoryText.implicitWidth + 16
                     height: 28
                     radius: 4
-                    color: textureBrowser.selectedCategory === modelData ? Theme.accent : (categoryMouse.containsMouse ? Theme.buttonHover : Theme.buttonBg)
-                    border.color: textureBrowser.selectedCategory === modelData ? Theme.accent : Theme.inputBorder
+                    color: textureBrowser.selectedCategory === modelData ? themeRoot.accent : (categoryMouse.containsMouse ? themeRoot.buttonHover : themeRoot.buttonBg)
+                    border.color: textureBrowser.selectedCategory === modelData ? themeRoot.accent : themeRoot.inputBorder
                     border.width: 1
                     
                     // Smooth hover animations (scale down on press only)
                     scale: categoryMouse.pressed ? 0.97 : 1.0
-                    Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
-                    Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                    Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
+                    Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
                     
                     Text {
                         id: categoryText
                         anchors.centerIn: parent
                         text: modelData.charAt(0).toUpperCase() + modelData.slice(1)
-                        color: Theme.textColor
+                        color: themeRoot.textColor
                         font.pixelSize: 11
                         font.bold: textureBrowser.selectedCategory === modelData
                     }
@@ -332,7 +336,7 @@ Popup {
             // Results count
             Text {
                 text: textureGrid.count + " textures"
-                color: Theme.textDim
+                color: themeRoot.textDim
                 font.pixelSize: 11
             }
         }
@@ -341,8 +345,8 @@ Popup {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: textureBrowser.selectedTexture ? 40 : 0
-            color: Theme.inputBg
-            border.color: Theme.accent
+            color: themeRoot.inputBg
+            border.color: themeRoot.accent
             border.width: 1
             radius: 4
             visible: textureBrowser.selectedTexture !== ""
@@ -357,14 +361,14 @@ Popup {
                 
                 Text {
                     text: "Selected:"
-                    color: Theme.textDim
+                    color: themeRoot.textDim
                     font.pixelSize: 12
                 }
                 
                 Text {
                     Layout.fillWidth: true
                     text: textureBrowser.selectedTexture
-                    color: Theme.textColor
+                    color: themeRoot.textColor
                     font.pixelSize: 12
                     font.bold: true
                     elide: Text.ElideMiddle
@@ -374,13 +378,13 @@ Popup {
                     width: copyBtn.implicitWidth + 28
                     height: 24
                     radius: 3
-                    color: copyMouse.containsMouse ? Theme.accentHover : Theme.accent
+                    color: copyMouse.containsMouse ? themeRoot.accentHover : themeRoot.accent
                     
                     RowLayout {
                         anchors.centerIn: parent
                         spacing: 6
                         
-                        Image { width: 14; height: 14; source: "qrc:/media/clipboard.svg"; sourceSize: Qt.size(14, 14) }
+                        ThemedIcon { width: 14; height: 14; source: "qrc:/media/clipboard.svg"; sourceSize: Qt.size(14, 14); themeRoot: textureBrowser.themeRoot }
                         Text {
                             id: copyBtn
                             text: "Copy"
@@ -432,7 +436,7 @@ Popup {
                     
                     highlight: Rectangle {
                         color: "transparent"
-                        border.color: Theme.accent
+                        border.color: themeRoot.accent
                         border.width: 2
                         radius: 6
                     }
@@ -444,14 +448,14 @@ Popup {
                         required property var modelData
                         width: 115
                         height: 135
-                        color: gridItemMouse.containsMouse ? Theme.buttonHover : "transparent"
-                        border.color: textureBrowser.selectedTexture === modelData.path ? Theme.accent : (gridItemMouse.containsMouse ? Theme.accent : "transparent")
+                        color: gridItemMouse.containsMouse ? themeRoot.buttonHover : "transparent"
+                        border.color: textureBrowser.selectedTexture === modelData.path ? themeRoot.accent : (gridItemMouse.containsMouse ? themeRoot.accent : "transparent")
                         border.width: textureBrowser.selectedTexture === modelData.path ? 2 : 1
                         radius: 6
                         
                         // Smooth hover animations (no scale up)
-                        Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
-                        Behavior on border.color { ColorAnimation { duration: Theme.animDurationFast } }
+                        Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
+                        Behavior on border.color { ColorAnimation { duration: themeRoot.animDurationFast } }
                         
                         ColumnLayout {
                             anchors.fill: parent
@@ -463,8 +467,8 @@ Popup {
                                 Layout.preferredWidth: 100
                                 Layout.preferredHeight: 100
                                 Layout.alignment: Qt.AlignHCenter
-                                color: Theme.inputBg
-                                border.color: Theme.inputBorder
+                                color: themeRoot.inputBg
+                                border.color: themeRoot.inputBorder
                                 border.width: 1
                                 radius: 4
                                 
@@ -500,7 +504,7 @@ Popup {
                                     
                                     // Smooth fade-in when loaded
                                     opacity: status === Image.Ready ? 1 : 0
-                                    Behavior on opacity { NumberAnimation { duration: Theme.animDurationNormal; easing.type: Theme.animEasing } }
+                                    Behavior on opacity { NumberAnimation { duration: themeRoot.animDurationNormal; easing.type: themeRoot.animEasing } }
                                     
                                     // Loading spinner - waiting for thumbnail request
                                     Item {
@@ -530,12 +534,12 @@ Popup {
                                             onPaint: {
                                                 var ctx = getContext("2d")
                                                 ctx.reset()
-                                                ctx.strokeStyle = Theme.inputBorder
+                                                ctx.strokeStyle = themeRoot.inputBorder
                                                 ctx.lineWidth = 2
                                                 ctx.beginPath()
                                                 ctx.arc(width/2, height/2, 9, 0, Math.PI * 2)
                                                 ctx.stroke()
-                                                ctx.strokeStyle = Theme.accent
+                                                ctx.strokeStyle = themeRoot.accent
                                                 ctx.lineCap = "round"
                                                 ctx.beginPath()
                                                 var startAngle = (angle - 90) * Math.PI / 180
@@ -574,12 +578,12 @@ Popup {
                                             onPaint: {
                                                 var ctx = getContext("2d")
                                                 ctx.reset()
-                                                ctx.strokeStyle = Theme.inputBorder
+                                                ctx.strokeStyle = themeRoot.inputBorder
                                                 ctx.lineWidth = 2
                                                 ctx.beginPath()
                                                 ctx.arc(width/2, height/2, 9, 0, Math.PI * 2)
                                                 ctx.stroke()
-                                                ctx.strokeStyle = Theme.accent
+                                                ctx.strokeStyle = themeRoot.accent
                                                 ctx.lineCap = "round"
                                                 ctx.beginPath()
                                                 var startAngle = (angle - 90) * Math.PI / 180
@@ -593,7 +597,7 @@ Popup {
                                     Text {
                                         anchors.centerIn: parent
                                         text: "?"
-                                        color: Theme.textDim
+                                        color: themeRoot.textDim
                                         font.pixelSize: 24
                                         visible: gridThumbnailImage.status === Image.Error || gridThumbnailImage.status === Image.Null
                                     }
@@ -608,8 +612,8 @@ Popup {
                                     width: 16
                                     height: 16
                                     radius: 8
-                                    color: "#4CAF50"
-                                    border.color: "#2E7D32"
+                                    color: themeRoot.success
+                                    border.color: Qt.darker(themeRoot.success, 1.3)
                                     border.width: 1
                                     
                                     Text {
@@ -639,7 +643,7 @@ Popup {
                                     var parts = gridItemRect.modelData.path.split("/")
                                     return parts[parts.length - 1]
                                 }
-                                color: Theme.textColor
+                                color: themeRoot.textColor
                                 font.pixelSize: 10
                                 elide: Text.ElideMiddle
                                 horizontalAlignment: Text.AlignHCenter
@@ -689,7 +693,7 @@ Popup {
                 visible: textureBrowser.isLoading
                 opacity: textureBrowser.isLoading ? 1.0 : 0.0
                 
-                Behavior on opacity { NumberAnimation { duration: Theme.animDurationNormal } }
+                Behavior on opacity { NumberAnimation { duration: themeRoot.animDurationNormal } }
                 
                 Column {
                     anchors.centerIn: parent
@@ -717,7 +721,7 @@ Popup {
                         onPaint: {
                             var ctx = getContext("2d")
                             ctx.reset()
-                            ctx.strokeStyle = Theme.accent
+                            ctx.strokeStyle = themeRoot.accent
                             ctx.lineWidth = 4
                             ctx.lineCap = "round"
                             ctx.beginPath()
@@ -730,7 +734,7 @@ Popup {
                     
                     Text {
                         text: "Loading textures..."
-                        color: Theme.textColor
+                        color: themeRoot.textColor
                         font.pixelSize: 14
                         anchors.horizontalCenter: parent.horizontalCenter
                     }
@@ -754,7 +758,7 @@ Popup {
                         ? "Click a texture to select, double-click to open" 
                         : "Click a texture to select, double-click to use"
                 }
-                color: Theme.textDim
+                color: themeRoot.textDim
                 font.pixelSize: 11
             }
             
@@ -765,8 +769,8 @@ Popup {
                 width: 90
                 height: 32
                 radius: 4
-                color: cancelMouse.containsMouse || cancelBtn.activeFocus ? Theme.buttonHover : Theme.buttonBg
-                border.color: cancelBtn.activeFocus ? Theme.accent : "transparent"
+                color: cancelMouse.containsMouse || cancelBtn.activeFocus ? themeRoot.buttonHover : themeRoot.buttonBg
+                border.color: cancelBtn.activeFocus ? themeRoot.accent : "transparent"
                 border.width: 1
                 
                 activeFocusOnTab: true
@@ -776,13 +780,13 @@ Popup {
                 
                 // Smooth hover animation
                 scale: cancelMouse.pressed ? 0.97 : 1.0
-                Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
-                Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
+                Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
                 
                 Text {
                     anchors.centerIn: parent
                     text: "Cancel"
-                    color: Theme.textColor
+                    color: themeRoot.textColor
                     font.pixelSize: 13
                 }
                 
@@ -800,8 +804,8 @@ Popup {
                 width: 90
                 height: 32
                 radius: 4
-                color: selectMouse.containsMouse || selectBtn.activeFocus ? Theme.accentHover : Theme.accent
-                border.color: selectBtn.activeFocus ? "#ffffff" : "transparent"
+                color: selectMouse.containsMouse || selectBtn.activeFocus ? themeRoot.accentHover : themeRoot.accent
+                border.color: selectBtn.activeFocus ? themeRoot.textBright : "transparent"
                 border.width: 1
                 opacity: textureBrowser.selectedTexture ? 1.0 : 0.5
                 
@@ -812,8 +816,8 @@ Popup {
                 
                 // Smooth hover animation (scale down on press only)
                 scale: selectMouse.pressed && textureBrowser.selectedTexture ? 0.97 : 1.0
-                Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
-                Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
+                Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
                 
                 Text {
                     anchors.centerIn: parent

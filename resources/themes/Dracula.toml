@@ -1,0 +1,79 @@
+# VFileX Theme - Dracula
+# Based on the popular Dracula color scheme
+
+[colors]
+# Main background
+windowBg = "#282a36"
+
+# Panel colors
+panelBg = "#21222c"
+panelBorder = "#44475a"
+
+# Dialog/Modal colors
+dialogBg = "#282a36"
+dialogBorder = "#44475a"
+dialogHeaderBg = "#21222c"
+
+# Accent colors
+accent = "#bd93f9"
+accentHover = "#caa9fa"
+accentPressed = "#a67de8"
+
+# Input colors
+inputBg = "#44475a"
+inputBorder = "#6272a4"
+inputFocusBorder = "#bd93f9"
+
+# Text colors
+textColor = "#f8f8f2"
+textDim = "#6272a4"
+textBright = "#ffffff"
+
+# Icon color
+iconColor = "#f8f8f2"
+
+# Button colors
+buttonBg = "#44475a"
+buttonHover = "#6272a4"
+buttonPressed = "#505162"
+
+# Secondary button colors
+buttonSecondaryBg = "#44475a"
+buttonSecondaryHover = "#6272a4"
+buttonSecondaryText = "#f8f8f2"
+
+# Danger button (for delete, close, etc.)
+dangerColor = "#ff5555"
+dangerHover = "#ff7777"
+
+# Status colors
+success = "#50fa7b"
+warning = "#ffb86c"
+error = "#ff5555"
+
+# List/Grid item colors
+listItemBg = "transparent"
+listItemHover = "#44475a"
+listItemSelected = "#44475a"
+
+# Separator/Divider
+separator = "#44475a"
+
+# Dialog overlay
+overlayBg = "#99282a36"
+
+# Shadow
+shadowColor = "#40000000"
+
+[appearance]
+radius = 6
+radiusSmall = 4
+radiusLarge = 12
+dialogRadius = 8
+
+[animation]
+animDurationFast = 120
+animDurationNormal = 200
+animDurationSlow = 350
+animEasing = 3
+animEasingBounce = 34

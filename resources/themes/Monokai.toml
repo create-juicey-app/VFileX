@@ -1,0 +1,63 @@
+# VFileX Theme - Monokai
+# Monokai inspired theme
+
+[colors]
+windowBg = "#272822"
+panelBg = "#2b2a2a"
+panelBorder = "#44475a"
+
+dialogBg = "#2b2a2a"
+dialogBorder = "#44475a"
+dialogHeaderBg = "#2b2a2a"
+
+accent = "#f92672"
+accentHover = "#ff6ea0"
+accentPressed = "#c91f65"
+
+inputBg = "#3e3d32"
+inputBorder = "#5a5a5a"
+inputFocusBorder = "#f92672"
+
+textColor = "#f8f8f2"
+textDim = "#a6a6a6"
+textBright = "#ffffff"
+
+iconColor = "#f8f8f2"
+
+buttonBg = "#3e3d32"
+buttonHover = "#50514a"
+buttonPressed = "#5a4f4f"
+
+buttonSecondaryBg = "#3e3d32"
+buttonSecondaryHover = "#50514a"
+buttonSecondaryText = "#f8f8f2"
+
+dangerColor = "#e06c75"
+dangerHover = "#ff7b7b"
+
+success = "#a6e22e"
+warning = "#fd971f"
+error = "#e06c75"
+
+listItemBg = "transparent"
+listItemHover = "#3a3a3a"
+listItemSelected = "#f92672"
+
+separator = "#44475a"
+
+overlayBg = "#99000000"
+
+shadowColor = "#40000000"
+
+[appearance]
+radius = 6
+radiusSmall = 4
+radiusLarge = 12
+dialogRadius = 8
+
+[animation]
+animDurationFast = 120
+animDurationNormal = 200
+animDurationSlow = 350
+animEasing = 3
+animEasingBounce = 34

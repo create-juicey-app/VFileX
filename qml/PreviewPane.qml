@@ -3,29 +3,29 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import com.VFileX 1.0
-import "ThemeColors.js" as Theme
 
 Item {
     id: root
     
     property var textureProvider
+    required property var themeRoot
     property real zoom: 1.0
     property real minZoom: 0.1
     property real maxZoom: 10.0
     property int previewVersion: 0  // Increment to force image reload
     
-    // Animation settings (from Theme)
-    readonly property int animDurationFast: Theme.animDurationFast
-    readonly property int animDurationNormal: Theme.animDurationNormal
-    readonly property int animDurationSlow: Theme.animDurationSlow
+    // Animation settings (from themeRoot)
+    readonly property int animDurationFast: themeRoot.animDurationFast
+    readonly property int animDurationNormal: themeRoot.animDurationNormal
+    readonly property int animDurationSlow: themeRoot.animDurationSlow
     
-    // Colors (from Theme)
-    readonly property color textColor: Theme.textColor
-    readonly property color textDim: Theme.textDim
-    readonly property color panelBg: Theme.panelBg
-    readonly property color buttonBg: Theme.buttonBg
-    readonly property color buttonHover: Theme.buttonHover
-    readonly property color accent: Theme.accent
+    // Colors (from themeRoot)
+    readonly property color textColor: themeRoot.textColor
+    readonly property color textDim: themeRoot.textDim
+    readonly property color panelBg: themeRoot.panelBg
+    readonly property color buttonBg: themeRoot.buttonBg
+    readonly property color buttonHover: themeRoot.buttonHover
+    readonly property color accent: themeRoot.accent
     
     // Color picker state
     property bool showColorPicker: false
@@ -402,8 +402,8 @@ Item {
         y: Math.min(Math.max(root.colorPickerPos.y + 12, 5), root.height - height - 5)
         width: 140
         height: 72
-        color: "#1e1e1e"
-        border.color: "#555"
+        color: root.panelBg
+        border.color: root.panelBorder
         border.width: 1
         radius: 6
         z: 100
@@ -547,7 +547,7 @@ Item {
             anchors.right: parent.right
             anchors.leftMargin: 4
             height: 44
-            color: "#1e1e1e"
+            color: root.panelBg
             
             RowLayout {
                 anchors.fill: parent
@@ -567,12 +567,13 @@ Item {
                     Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: Easing.OutCubic } }
                     Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                     
-                    Image {
+                    ThemedIcon {
                         anchors.centerIn: parent
                         width: 12
                         height: 12
                         source: root.isAnimationPlaying ? "qrc:/media/close.svg" : "qrc:/media/play-solid.svg"
                         sourceSize: Qt.size(12, 12)
+                        themeRoot: root.themeRoot
                     }
                     
                     MouseArea {
@@ -676,7 +677,7 @@ Item {
             anchors.right: parent.right
             anchors.leftMargin: 4
             height: 1
-            color: "#3c3c3c"
+            color: root.panelBorder
         }
         
         // Frames list
@@ -878,11 +879,12 @@ Item {
                     font.pixelSize: 13
                     font.family: "monospace"
                 }
-                Image {
+                ThemedIcon {
                     width: 12
                     height: 12
                     source: "qrc:/media/multiply.svg"
                     sourceSize: Qt.size(12, 12)
+                    themeRoot: root.themeRoot
                     opacity: 0.8
                 }
                 Text {
@@ -896,7 +898,7 @@ Item {
             // Format badge
             Rectangle {
                 visible: textureProvider && textureProvider.is_loaded
-                color: "#3c3c3c"
+                color: root.buttonBg
                 radius: 4
                 width: formatText.width + 12
                 height: 22
@@ -916,11 +918,12 @@ Item {
                 visible: textureProvider && textureProvider.mipmap_count > 1
                 spacing: 4
                 
-                Image {
+                ThemedIcon {
                     width: 14
                     height: 14
                     source: "qrc:/media/layers.svg"
                     sourceSize: Qt.size(14, 14)
+                    themeRoot: root.themeRoot
                 }
                 
                 Rectangle {
@@ -935,12 +938,13 @@ Item {
                     Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: Easing.OutCubic } }
                     Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                     
-                    Image {
+                    ThemedIcon {
                         anchors.centerIn: parent
                         width: 10
                         height: 10
                         source: "qrc:/media/arrow-left.svg"
                         sourceSize: Qt.size(10, 10)
+                        themeRoot: root.themeRoot
                     }
                     
                     MouseArea {
@@ -975,12 +979,13 @@ Item {
                     Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: Easing.OutCubic } }
                     Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                     
-                    Image {
+                    ThemedIcon {
                         anchors.centerIn: parent
                         width: 10
                         height: 10
                         source: "qrc:/media/arrow-right.svg"
                         sourceSize: Qt.size(10, 10)
+                        themeRoot: root.themeRoot
                     }
                     
                     MouseArea {
@@ -1017,12 +1022,13 @@ Item {
                     Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: Easing.OutCubic } }
                     Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                     
-                    Image {
+                    ThemedIcon {
                         anchors.centerIn: parent
                         width: 14
                         height: 14
                         source: "qrc:/media/minus.svg"
                         sourceSize: Qt.size(14, 14)
+                        themeRoot: root.themeRoot
                     }
                     
                     MouseArea {
@@ -1077,12 +1083,13 @@ Item {
                     Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: Easing.OutCubic } }
                     Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                     
-                    Image {
+                    ThemedIcon {
                         anchors.centerIn: parent
                         width: 14
                         height: 14
                         source: "qrc:/media/plus.svg"
                         sourceSize: Qt.size(14, 14)
+                        themeRoot: root.themeRoot
                     }
                     
                     MouseArea {
@@ -1109,12 +1116,13 @@ Item {
                     Behavior on scale { NumberAnimation { duration: root.animDurationFast; easing.type: Easing.OutCubic } }
                     Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                     
-                    Image {
+                    ThemedIcon {
                         anchors.centerIn: parent
                         width: 14
                         height: 14
                         source: "qrc:/media/fit-screen.svg"
                         sourceSize: Qt.size(14, 14)
+                        themeRoot: root.themeRoot
                     }
                     
                     MouseArea {
@@ -1201,11 +1209,12 @@ Item {
                 visible: textureProvider && textureProvider.mipmap_count > 1
                 spacing: 4
                 
-                Image {
+                ThemedIcon {
                     width: 12
                     height: 12
                     source: "qrc:/media/layers.svg"
                     sourceSize: Qt.size(12, 12)
+                    themeRoot: root.themeRoot
                 }
                 
                 Text {
@@ -1228,11 +1237,12 @@ Item {
                     anchors.centerIn: parent
                     spacing: 4
                     
-                    Image {
+                    ThemedIcon {
                         width: 10
                         height: 10
                         source: "qrc:/media/eye.svg"
                         sourceSize: Qt.size(10, 10)
+                        themeRoot: root.themeRoot
                     }
                     
                     Text {
@@ -1256,11 +1266,12 @@ Item {
                     anchors.centerIn: parent
                     spacing: 4
                     
-                    Image {
+                    ThemedIcon {
                         width: 10
                         height: 10
                         source: "qrc:/media/play.svg"
                         sourceSize: Qt.size(10, 10)
+                        themeRoot: root.themeRoot
                     }
                     
                     Text {
@@ -1278,11 +1289,12 @@ Item {
                 spacing: 4
                 opacity: 0.6
                 
-                Image {
+                ThemedIcon {
                     width: 12
                     height: 12
                     source: "qrc:/media/color-picker.svg"
                     sourceSize: Qt.size(12, 12)
+                    themeRoot: root.themeRoot
                 }
                 
                 Text {
@@ -1308,12 +1320,13 @@ Item {
         spacing: 12
         visible: !textureProvider || !textureProvider.is_loaded
         
-        Image {
+        ThemedIcon {
             anchors.horizontalCenter: parent.horizontalCenter
             width: 48
             height: 48
             source: "qrc:/media/camera.svg"
             sourceSize: Qt.size(48, 48)
+            themeRoot: root.themeRoot
             opacity: 0.3
         }
         

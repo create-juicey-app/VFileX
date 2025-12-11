@@ -1,0 +1,83 @@
+# VFileX Theme - Classic Steam
+# Inspired by the old Steam client interface
+
+[colors]
+# Main background (classic Steam dark green-gray)
+windowBg = "#1b2838"
+
+# Panel colors
+panelBg = "#171a21"
+panelBorder = "#2a475e"
+
+# Dialog/Modal colors
+dialogBg = "#1b2838"
+dialogBorder = "#2a475e"
+dialogHeaderBg = "#171a21"
+
+# Accent colors (Steam green)
+accent = "#5c7e10"
+accentHover = "#6d8c1f"
+accentPressed = "#4a6a0a"
+
+# Input colors
+inputBg = "#32353c"
+inputBorder = "#4a4a4a"
+inputFocusBorder = "#5c7e10"
+
+# Text colors
+textColor = "#c6d4df"
+textDim = "#8b929a"
+textBright = "#ffffff"
+
+# Icon color
+iconColor = "#c6d4df"
+
+# Button colors
+buttonBg = "#32353c"
+buttonHover = "#3d4450"
+buttonPressed = "#4a4a4a"
+
+# Secondary button
+buttonSecondaryBg = "#32353c"
+buttonSecondaryHover = "#3d4450"
+buttonSecondaryText = "#c6d4df"
+
+# Danger button
+dangerColor = "#b33c37"
+dangerHover = "#c94f49"
+
+# Status colors
+success = "#5c7e10"
+warning = "#e5c07b"
+error = "#b33c37"
+
+# List items
+listItemBg = "transparent"
+listItemHover = "#2a475e"
+listItemSelected = "#4c6b22"
+
+# Separator
+separator = "#2a475e"
+
+# Dialog overlay
+overlayBg = "#cc000000"
+
+# Shadow
+shadowColor = "#40000000"
+
+[appearance]
+# Border radius (Steam uses more squared corners)
+radius = 3
+radiusSmall = 2
+radiusLarge = 6
+dialogRadius = 4
+
+[animation]
+# Animation durations (ms)
+animDurationFast = 100
+animDurationNormal = 150
+animDurationSlow = 250
+
+# Easing types
+animEasing = 3
+animEasingBounce = 34

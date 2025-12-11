@@ -3,17 +3,18 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import com.VFileX 1.0
-import "ThemeColors.js" as Theme
 
 Dialog {
     id: root
+    
+    required property var themeRoot
     
     modal: true
     anchors.centerIn: parent
     width: 420
     padding: 0
     
-    Overlay.modal: Rectangle { color: Theme.overlayBg }
+    Overlay.modal: Rectangle { color: themeRoot.overlayBg }
     
     Keys.onEscapePressed: close()
     Keys.onReturnPressed: close()
@@ -23,22 +24,22 @@ Dialog {
     
     enter: Transition {
         ParallelAnimation {
-            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.animDurationNormal; easing.type: Theme.animEasing }
-            NumberAnimation { property: "scale"; from: 0.9; to: 1; duration: Theme.animDurationNormal; easing.type: Theme.animEasingBounce }
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: themeRoot.animDurationNormal; easing.type: themeRoot.animEasing }
+            NumberAnimation { property: "scale"; from: 0.9; to: 1; duration: themeRoot.animDurationNormal; easing.type: themeRoot.animEasingBounce }
         }
     }
     exit: Transition {
         ParallelAnimation {
-            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.animDurationFast; easing.type: Easing.InCubic }
-            NumberAnimation { property: "scale"; from: 1; to: 0.95; duration: Theme.animDurationFast; easing.type: Easing.InCubic }
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: themeRoot.animDurationFast; easing.type: Easing.InCubic }
+            NumberAnimation { property: "scale"; from: 1; to: 0.95; duration: themeRoot.animDurationFast; easing.type: Easing.InCubic }
         }
     }
     
     background: Rectangle {
-        color: Theme.panelBg
-        border.color: Theme.panelBorder
+        color: themeRoot.dialogBg
+        border.color: themeRoot.dialogBorder
         border.width: 0
-        radius: 12
+        radius: themeRoot.dialogRadius
     }
     
     header: Item { height: 0 }
@@ -51,11 +52,11 @@ Dialog {
         Rectangle {
             Layout.fillWidth: true
             height: 100
-            radius: 12
+            radius: themeRoot.dialogRadius
             
             gradient: Gradient {
-                GradientStop { position: 0.0; color: "#1a3a5c" }
-                GradientStop { position: 1.0; color: Theme.panelBg }
+                GradientStop { position: 0.0; color: Qt.darker(themeRoot.accent, 1.5) }
+                GradientStop { position: 1.0; color: themeRoot.dialogBg }
             }
             
             Rectangle {
@@ -63,7 +64,7 @@ Dialog {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 height: 12
-                color: Theme.panelBg
+                color: themeRoot.dialogBg
             }
             
             RowLayout {
@@ -90,7 +91,7 @@ Dialog {
                     }
                     
                     Text {
-                        text: "Version 0.8.2"
+                        text: "Version 0.8.5"
                         color: "#88ccff"
                         font.pixelSize: 12
                     }
@@ -109,7 +110,7 @@ Dialog {
             Text {
                 Layout.fillWidth: true
                 text: "A high-speed, cross-platform editor for Valve Material (.VMT) files."
-                color: Theme.textColor
+                color: themeRoot.textColor
                 wrapMode: Text.WordWrap
                 font.pixelSize: 13
                 lineHeight: 1.4
@@ -118,7 +119,7 @@ Dialog {
             Rectangle {
                 Layout.fillWidth: true
                 height: 1
-                color: Theme.panelBorder
+                color: themeRoot.panelBorder
             }
             
             RowLayout {
@@ -126,7 +127,7 @@ Dialog {
                 
                 Text {
                     text: "Made by JuiceyDev & Olxgs"
-                    color: Theme.textDim
+                    color: themeRoot.textDim
                     font.pixelSize: 11
                 }
                 
@@ -134,7 +135,7 @@ Dialog {
                 
                 Text {
                     text: "Built with Rust + Qt"
-                    color: Theme.textDim
+                    color: themeRoot.textDim
                     font.pixelSize: 11
                 }
             }
@@ -144,13 +145,13 @@ Dialog {
         Rectangle {
             Layout.fillWidth: true
             height: 56
-            color: "#1e1e1e"
+            color: themeRoot.dialogHeaderBg
             
             Rectangle {
                 anchors.top: parent.top
                 width: parent.width
                 height: 1
-                color: Theme.panelBorder
+                color: themeRoot.separator
             }
             
             Rectangle {
@@ -158,14 +159,14 @@ Dialog {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 height: 12
-                radius: 12
-                color: "#1e1e1e"
+                radius: themeRoot.dialogRadius
+                color: themeRoot.dialogHeaderBg
                 
                 Rectangle {
                     anchors.top: parent.top
                     width: parent.width
                     height: 6
-                    color: "#1e1e1e"
+                    color: themeRoot.dialogHeaderBg
                 }
             }
             
@@ -175,7 +176,7 @@ Dialog {
                 width: 90
                 height: 32
                 radius: 4
-                color: closeAboutMouse.containsMouse || aboutCloseBtn.activeFocus ? Theme.accentHover : Theme.accent
+                color: closeAboutMouse.containsMouse || aboutCloseBtn.activeFocus ? themeRoot.accentHover : themeRoot.accent
                 border.color: aboutCloseBtn.activeFocus ? "#ffffff" : "transparent"
                 border.width: 1
                 
@@ -185,8 +186,8 @@ Dialog {
                 Keys.onSpacePressed: root.close()
                 
                 scale: closeAboutMouse.pressed ? 0.97 : 1.0
-                Behavior on scale { NumberAnimation { duration: Theme.animDurationFast; easing.type: Theme.animEasing } }
-                Behavior on color { ColorAnimation { duration: Theme.animDurationFast } }
+                Behavior on scale { NumberAnimation { duration: themeRoot.animDurationFast; easing.type: themeRoot.animEasing } }
+                Behavior on color { ColorAnimation { duration: themeRoot.animDurationFast } }
                 
                 Text {
                     anchors.centerIn: parent

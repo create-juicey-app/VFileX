@@ -32,31 +32,170 @@ ApplicationWindow {
     title: materialModel.is_modified ? 
            `VFileX - ${materialModel.file_path || "Untitled"}*` :
            `VFileX - ${materialModel.file_path || "Untitled"}`
-    color: Theme.windowBg
+    color: panelBgColor  // Use dynamic property
     
-    // Use Theme singleton for all colors
-    readonly property color panelBg: Theme.panelBg
-    readonly property color panelBorder: Theme.panelBorder
-    readonly property color inputBg: Theme.inputBg
-    readonly property color inputBorder: Theme.inputBorder
-    readonly property color textColor: Theme.textColor
-    readonly property color textDim: Theme.textDim
-    readonly property color accent: Theme.accent
-    readonly property color accentHover: Theme.accentHover
-    readonly property color buttonBg: Theme.buttonBg
-    readonly property color buttonHover: Theme.buttonHover
-    readonly property int radius: Theme.radius
+    // Theme version counter to trigger rebinds
+    property int themeVersion: 0
+    
+    // Dynamic theme colors (updated when theme changes)
+    property color windowBgColor: Theme.windowBg
+    property color panelBgColor: Theme.panelBg
+    property color panelBorderColor: Theme.panelBorder
+    property color dialogBgColor: Theme.dialogBg
+    property color dialogBorderColor: Theme.dialogBorder
+    property color dialogHeaderBgColor: Theme.dialogHeaderBg
+    property color inputBgColor: Theme.inputBg
+    property color inputBorderColor: Theme.inputBorder
+    property color inputFocusBorderColor: Theme.inputFocusBorder
+    property color textColorValue: Theme.textColor
+    property color textDimColor: Theme.textDim
+    property color textBrightColor: Theme.textBright
+    property color iconColorValue: Theme.iconColor
+    property color accentColor: Theme.accent
+    property color accentHoverColor: Theme.accentHover
+    property color accentPressedColor: Theme.accentPressed
+    property color buttonBgColor: Theme.buttonBg
+    property color buttonHoverColor: Theme.buttonHover
+    property color buttonPressedColor: Theme.buttonPressed
+    property color buttonSecondaryBgColor: Theme.buttonSecondaryBg
+    property color buttonSecondaryHoverColor: Theme.buttonSecondaryHover
+    property color buttonSecondaryTextColor: Theme.buttonSecondaryText
+    property color dangerColorValue: Theme.dangerColor
+    property color dangerHoverColor: Theme.dangerHover
+    property color successColor: Theme.success
+    property color warningColor: Theme.warning
+    property color errorColor: Theme.error
+    property color listItemBgColor: Theme.listItemBg
+    property color listItemHoverColor: Theme.listItemHover
+    property color listItemSelectedColor: Theme.listItemSelected
+    property color separatorColor: Theme.separator
+    property color overlayBgColor: Theme.overlayBg
+    property color shadowColorValue: Theme.shadowColor
+    property int radiusValue: Theme.radius
+    property int radiusSmallValue: Theme.radiusSmall
+    property int radiusLargeValue: Theme.radiusLarge
+    property int dialogRadiusValue: Theme.dialogRadius
 
-    readonly property int animDurationFast: Theme.animDurationFast
-    readonly property int animDurationNormal: Theme.animDurationNormal
-    readonly property int animDurationSlow: Theme.animDurationSlow
-    readonly property int animEasing: Theme.animEasing
-    readonly property int animEasingBounce: Theme.animEasingBounce
+    property int animDurationFastValue: Theme.animDurationFast
+    property int animDurationNormalValue: Theme.animDurationNormal
+    property int animDurationSlowValue: Theme.animDurationSlow
+    property int animEasingValue: Theme.animEasing
+    property int animEasingBounceValue: Theme.animEasingBounce
+    
+    // Backwards-compatible aliases (for components that use root.*)
+    readonly property color panelBg: panelBgColor
+    readonly property color panelBorder: panelBorderColor
+    readonly property color dialogBg: dialogBgColor
+    readonly property color dialogBorder: dialogBorderColor
+    readonly property color dialogHeaderBg: dialogHeaderBgColor
+    readonly property color inputBg: inputBgColor
+    readonly property color inputBorder: inputBorderColor
+    readonly property color inputFocusBorder: inputFocusBorderColor
+    readonly property color textColor: textColorValue
+    readonly property color textDim: textDimColor
+    readonly property color textBright: textBrightColor
+    readonly property color iconColor: iconColorValue
+    readonly property color accent: accentColor
+    readonly property color accentHover: accentHoverColor
+    readonly property color accentPressed: accentPressedColor
+    readonly property color buttonBg: buttonBgColor
+    readonly property color buttonHover: buttonHoverColor
+    readonly property color buttonPressed: buttonPressedColor
+    readonly property color buttonSecondaryBg: buttonSecondaryBgColor
+    readonly property color buttonSecondaryHover: buttonSecondaryHoverColor
+    readonly property color buttonSecondaryText: buttonSecondaryTextColor
+    readonly property color dangerColor: dangerColorValue
+    readonly property color dangerHover: dangerHoverColor
+    readonly property color success: successColor
+    readonly property color warning: warningColor
+    readonly property color error: errorColor
+    readonly property color listItemBg: listItemBgColor
+    readonly property color listItemHover: listItemHoverColor
+    readonly property color listItemSelected: listItemSelectedColor
+    readonly property color separator: separatorColor
+    readonly property color overlayBg: overlayBgColor
+    readonly property color shadowColor: shadowColorValue
+    readonly property int radius: radiusValue
+    readonly property int radiusSmall: radiusSmallValue
+    readonly property int radiusLarge: radiusLargeValue
+    readonly property int dialogRadius: dialogRadiusValue
+    readonly property int animDurationFast: animDurationFastValue
+    readonly property int animDurationNormal: animDurationNormalValue
+    readonly property int animDurationSlow: animDurationSlowValue
+    readonly property int animEasing: animEasingValue
+    readonly property int animEasingBounce: animEasingBounceValue
+    
+    // Function to apply a theme from JSON content
+    function applyTheme(themeContentJson) {
+        if (!themeContentJson || themeContentJson === "") return
+        
+        try {
+            var themeData = JSON.parse(themeContentJson)
+            
+            // Apply theme to JS module
+            Theme.applyTheme(themeData)
+            
+            // Update dynamic properties - Colors
+            if (themeData.windowBg) windowBgColor = themeData.windowBg
+            if (themeData.panelBg) panelBgColor = themeData.panelBg
+            if (themeData.panelBorder) panelBorderColor = themeData.panelBorder
+            if (themeData.dialogBg) dialogBgColor = themeData.dialogBg
+            if (themeData.dialogBorder) dialogBorderColor = themeData.dialogBorder
+            if (themeData.dialogHeaderBg) dialogHeaderBgColor = themeData.dialogHeaderBg
+            if (themeData.inputBg) inputBgColor = themeData.inputBg
+            if (themeData.inputBorder) inputBorderColor = themeData.inputBorder
+            if (themeData.inputFocusBorder) inputFocusBorderColor = themeData.inputFocusBorder
+            if (themeData.textColor) textColorValue = themeData.textColor
+            if (themeData.textDim) textDimColor = themeData.textDim
+            if (themeData.textBright) textBrightColor = themeData.textBright
+            if (themeData.iconColor) iconColorValue = themeData.iconColor
+            if (themeData.accent) accentColor = themeData.accent
+            if (themeData.accentHover) accentHoverColor = themeData.accentHover
+            if (themeData.accentPressed) accentPressedColor = themeData.accentPressed
+            if (themeData.buttonBg) buttonBgColor = themeData.buttonBg
+            if (themeData.buttonHover) buttonHoverColor = themeData.buttonHover
+            if (themeData.buttonPressed) buttonPressedColor = themeData.buttonPressed
+            if (themeData.buttonSecondaryBg) buttonSecondaryBgColor = themeData.buttonSecondaryBg
+            if (themeData.buttonSecondaryHover) buttonSecondaryHoverColor = themeData.buttonSecondaryHover
+            if (themeData.buttonSecondaryText) buttonSecondaryTextColor = themeData.buttonSecondaryText
+            if (themeData.dangerColor) dangerColorValue = themeData.dangerColor
+            if (themeData.dangerHover) dangerHoverColor = themeData.dangerHover
+            if (themeData.success) successColor = themeData.success
+            if (themeData.warning) warningColor = themeData.warning
+            if (themeData.error) errorColor = themeData.error
+            if (themeData.listItemBg) listItemBgColor = themeData.listItemBg
+            if (themeData.listItemHover) listItemHoverColor = themeData.listItemHover
+            if (themeData.listItemSelected) listItemSelectedColor = themeData.listItemSelected
+            if (themeData.separator) separatorColor = themeData.separator
+            if (themeData.overlayBg) overlayBgColor = themeData.overlayBg
+            if (themeData.shadowColor) shadowColorValue = themeData.shadowColor
+            
+            // Update dynamic properties - Appearance
+            if (themeData.radius !== undefined) radiusValue = themeData.radius
+            if (themeData.radiusSmall !== undefined) radiusSmallValue = themeData.radiusSmall
+            if (themeData.radiusLarge !== undefined) radiusLargeValue = themeData.radiusLarge
+            if (themeData.dialogRadius !== undefined) dialogRadiusValue = themeData.dialogRadius
+            
+            // Update dynamic properties - Animation
+            if (themeData.animDurationFast !== undefined) animDurationFastValue = themeData.animDurationFast
+            if (themeData.animDurationNormal !== undefined) animDurationNormalValue = themeData.animDurationNormal
+            if (themeData.animDurationSlow !== undefined) animDurationSlowValue = themeData.animDurationSlow
+            if (themeData.animEasing !== undefined) animEasingValue = themeData.animEasing
+            if (themeData.animEasingBounce !== undefined) animEasingBounceValue = themeData.animEasingBounce
+            
+            // Increment version to trigger any remaining rebinds
+            themeVersion++
+            
+            console.log("Theme applied successfully")
+        } catch (e) {
+            console.log("Error applying theme: " + e)
+        }
+    }
     
     // Dialog overlay styling
     Overlay.modal: Rectangle {
-        color: Theme.overlayBg
-        Behavior on opacity { NumberAnimation { duration: Theme.animDurationFast } }
+        color: root.overlayBg
+        Behavior on opacity { NumberAnimation { duration: root.animDurationFast } }
     }
     Overlay.modeless: Rectangle {
         color: Qt.rgba(0, 0, 0, 0.3)
@@ -80,6 +219,21 @@ ApplicationWindow {
         Component.onCompleted: {
             initialize()
             loadShaders()
+            initializeTheme()
+        }
+        
+        onTheme_content_changed: function(themeContent) {
+            root.applyTheme(themeContent)
+        }
+        
+        function initializeTheme() {
+            // Ensure default theme exists
+            ensure_default_theme()
+            
+            // Load current theme
+            var themeName = theme || "Default"
+            var themeContent = get_theme_content(themeName)
+            root.applyTheme(themeContent)
         }
         
         function loadShaders() {
@@ -332,6 +486,8 @@ ApplicationWindow {
         id: appMenuBar
         materialModel: materialModel
         previewPane: previewPane
+        app: app
+        themeRoot: root
         shortcutMap: root.shortcutMap
         selectedGame: app.selected_game
         
@@ -363,7 +519,7 @@ ApplicationWindow {
         
         background: Rectangle {
             id: notificationBg
-            color: "#4CAF50"
+            color: root.success
             radius: 8
             border.width: 1
             border.color: Qt.lighter(color, 1.2)
@@ -497,7 +653,7 @@ ApplicationWindow {
                             font.pixelSize: 13
                             
                             background: Rectangle { 
-                                color: shaderCombo.pressed ? "#2a2d2e" : (shaderCombo.hovered ? "#323232" : "transparent")
+                                color: shaderCombo.pressed ? root.buttonPressed : (shaderCombo.hovered ? root.buttonHover : "transparent")
                                 radius: 4
                                 Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                             }
@@ -510,13 +666,14 @@ ApplicationWindow {
                                 verticalAlignment: Text.AlignVCenter
                             }
                             
-                            indicator: Image {
+                            indicator: ThemedIcon {
                                 x: parent.width - width - 12
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 10
                                 height: 10
                                 source: "qrc:/media/nav-arrow.svg"
                                 sourceSize: Qt.size(10, 10)
+                                themeRoot: root
                             }
                             
                             delegate: ItemDelegate {
@@ -546,7 +703,7 @@ ApplicationWindow {
                                         visible: shaderDelegate.isFirstInCategory && shaderDelegate.index > 0
                                     }
                                     
-                                    Image {
+                                    ThemedIcon {
                                         anchors.left: parent.left
                                         anchors.leftMargin: 6
                                         anchors.verticalCenter: parent.verticalCenter
@@ -555,6 +712,7 @@ ApplicationWindow {
                                         visible: shaderDelegate.isFirstInCategory
                                         source: shaderDelegate.model.category === "Common" ? "qrc:/media/star.svg" : "qrc:/media/star-outline.svg"
                                         sourceSize: Qt.size(12, 12)
+                                        themeRoot: root
                                     }
                                     
                                     Text {
@@ -562,13 +720,13 @@ ApplicationWindow {
                                         anchors.leftMargin: 24
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: shaderDelegate.model.name
-                                        color: shaderDelegate.highlighted ? "#ffffff" : root.textColor
+                                        color: shaderDelegate.highlighted ? root.textBright : root.textColor
                                         font.pixelSize: 13
                                     }
                                 }
                                 
                                 background: Rectangle { 
-                                    color: shaderDelegate.highlighted ? root.accent : (shaderDelegate.hovered ? "#3c3c3c" : "transparent")
+                                    color: shaderDelegate.highlighted ? root.accent : (shaderDelegate.hovered ? root.listItemHover : "transparent")
                                     Behavior on color { ColorAnimation { duration: root.animDurationFast } }
                                 }
                                 highlighted: shaderCombo.highlightedIndex === index
@@ -599,8 +757,8 @@ ApplicationWindow {
                                 }
                                 
                                 background: Rectangle {
-                                    color: "#1e1e1e"
-                                    border.color: root.panelBorder
+                                    color: root.dialogBg
+                                    border.color: root.dialogBorder
                                     border.width: 1
                                     radius: 4
                                 }
@@ -690,11 +848,12 @@ ApplicationWindow {
                                 anchors.verticalCenterOffset: -4
                                 spacing: 6
                                 
-                                Image {
+                                ThemedIcon {
                                     width: 10
                                     height: 10
                                     source: "qrc:/media/nav-arrow.svg"
                                     sourceSize: Qt.size(10, 10)
+                                    themeRoot: root
                                     
                                     rotation: root.isCategoryCollapsed(section) ? 0 : -90
                                     Behavior on rotation { NumberAnimation { duration: root.animDurationFast; easing.type: root.animEasing } }
@@ -725,6 +884,7 @@ ApplicationWindow {
                             isCollapsed: root.isCategoryCollapsed(paramCategory)
                             textureProvider: globalTextureProvider
                             materialsRoot: app.materials_root
+                            themeRoot: root
                             
                             onParameterChanged: function(name, value) {
                                 materialModel.set_parameter_value(name, value)
@@ -751,13 +911,13 @@ ApplicationWindow {
                 Rectangle {
                     Layout.fillWidth: true
                     height: 40
-                    color: addBtn.pressed ? "#094771" : (addBtn.containsMouse ? root.accentHover : root.accent)
+                    color: addBtn.pressed ? root.accentPressed : (addBtn.containsMouse ? root.accentHover : root.accent)
                     radius: root.radius
                     
                     Text {
                         anchors.centerIn: parent
                         text: "+ Add Parameter"
-                        color: "#ffffff"
+                        color: root.textBright
                         font.pixelSize: 13
                         font.bold: true
                     }
@@ -776,12 +936,13 @@ ApplicationWindow {
         Rectangle {
             SplitView.fillWidth: true
             SplitView.minimumWidth: 400
-            color: "#1a1a1a"
+            color: root.windowBg
             
             PreviewPane {
                 id: previewPane
                 anchors.fill: parent
                 textureProvider: globalTextureProvider
+                themeRoot: root
             }
         }
     }
@@ -790,6 +951,7 @@ ApplicationWindow {
     NewMaterialDialog {
         id: newMaterialDialog
         shaderModel: shaderModel
+        themeRoot: root
         onCreateMaterial: function(shaderName) {
             materialModel.new_material(shaderName)
         }
@@ -797,6 +959,7 @@ ApplicationWindow {
 
     AddParameterDialog {
         id: addParamDialog
+        themeRoot: root
         onAddParameter: function(name, value) {
             materialModel.set_parameter_value(name, value)
         }
@@ -804,11 +967,13 @@ ApplicationWindow {
 
     AboutDialog {
         id: aboutDialog
+        themeRoot: root
     }
 
     WelcomeDialog {
         id: welcomeDialog
         app: app
+        themeRoot: root
         onGameSelected: {
         }
         onSkipped: {
@@ -818,6 +983,7 @@ ApplicationWindow {
     ImageToVtfDialog {
         id: imageToVtfDialog
         app: app
+        themeRoot: root
         urlToLocalPath: root.urlToLocalPath
         onConversionComplete: function(successCount, totalCount) {
             if (successCount > 0) {
@@ -842,12 +1008,14 @@ ApplicationWindow {
 
     ColorPickerDialog {
         id: colorPickerDialog
+        themeRoot: root
     }
 
     TextureBrowser {
         id: globalTextureBrowser
         app: app
         textureProvider: globalTextureProvider
+        themeRoot: root
     }
 }
 
