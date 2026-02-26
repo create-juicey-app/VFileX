@@ -84,6 +84,7 @@ MenuBar {
         
         delegate: MenuItem {
             id: fileMenuItem
+            implicitWidth: contentItem.implicitWidth
             contentItem: RowLayout {
                 spacing: 8
                 ThemedIcon {
@@ -118,6 +119,7 @@ MenuBar {
             title: "Open Specific"
             delegate: MenuItem {
                 id: openSpecificMenuItem
+                implicitWidth: contentItem.implicitWidth
                 contentItem: RowLayout {
                     spacing: 8
                     ThemedIcon {
@@ -154,6 +156,7 @@ MenuBar {
         title: "&View"
         delegate: MenuItem {
             id: viewMenuItem
+            implicitWidth: contentItem.implicitWidth
             contentItem: RowLayout {
                 spacing: 8
                 ThemedIcon {
@@ -193,6 +196,7 @@ MenuBar {
         title: "&Tools"
         delegate: MenuItem {
             id: toolsMenuItem
+            implicitWidth: contentItem.implicitWidth
             contentItem: RowLayout {
                 spacing: 8
                 ThemedIcon {
@@ -232,6 +236,7 @@ MenuBar {
         
         delegate: MenuItem {
             id: settingsMenuItem
+            implicitWidth: contentItem.implicitWidth
             contentItem: RowLayout {
                 spacing: 8
                 ThemedIcon {
@@ -269,6 +274,7 @@ MenuBar {
             
             delegate: MenuItem {
                 id: themeMenuItem
+                implicitWidth: contentItem.implicitWidth
                 contentItem: RowLayout {
                     spacing: 8
                     ThemedIcon {
@@ -325,6 +331,7 @@ MenuBar {
         title: "&Help"
         delegate: MenuItem {
             id: helpMenuItem
+            implicitWidth: contentItem.implicitWidth
             contentItem: RowLayout {
                 spacing: 8
                 ThemedIcon {
