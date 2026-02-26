@@ -68,6 +68,7 @@ MenuBar {
             verticalAlignment: Text.AlignVCenter
         }
         background: Rectangle {
+            anchors.fill: parent
             color: menuBarItem.highlighted ? accent : (menuBarItem.hovered ? buttonHover : "transparent")
             Behavior on color { ColorAnimation { duration: animDurationFast } }
         }
@@ -101,10 +102,7 @@ MenuBar {
                     visible: text !== ""
                 }
             }
-            background: Rectangle {
-                color: fileMenuItem.highlighted ? accent : "transparent"
-                radius: 4
-            }
+            background: Rectangle { anchors.fill: parent; color: fileMenuItem.highlighted ? accent : "transparent"; radius: 4 }
         }
         background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
         
@@ -132,7 +130,7 @@ MenuBar {
                         Layout.fillWidth: true
                     }
                 }
-                background: Rectangle { color: openSpecificMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+                background: Rectangle { anchors.fill: parent; color: openSpecificMenuItem.highlighted ? accent : "transparent"; radius: 4 }
             }
             background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
             
@@ -174,7 +172,7 @@ MenuBar {
                     visible: text !== ""
                 }
             }
-            background: Rectangle { color: viewMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+            background: Rectangle { anchors.fill: parent; color: viewMenuItem.highlighted ? accent : "transparent"; radius: 4 }
         }
         background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
         
@@ -213,7 +211,7 @@ MenuBar {
                     visible: text !== ""
                 }
             }
-            background: Rectangle { color: toolsMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+            background: Rectangle { anchors.fill: parent; color: toolsMenuItem.highlighted ? accent : "transparent"; radius: 4 }
         }
         background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
         
@@ -252,7 +250,7 @@ MenuBar {
                     visible: text !== ""
                 }
             }
-            background: Rectangle { color: settingsMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+            background: Rectangle { anchors.fill: parent; color: settingsMenuItem.highlighted ? accent : "transparent"; radius: 4 }
         }
         background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
         
@@ -288,7 +286,7 @@ MenuBar {
                         font.pixelSize: 12
                     }
                 }
-                background: Rectangle { color: themeMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+                background: Rectangle { anchors.fill: parent; color: themeMenuItem.highlighted ? accent : "transparent"; radius: 4 }
             }
             background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
             
@@ -345,7 +343,7 @@ MenuBar {
                     visible: text !== ""
                 }
             }
-            background: Rectangle { color: helpMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+            background: Rectangle { anchors.fill: parent; color: helpMenuItem.highlighted ? accent : "transparent"; radius: 4 }
         }
         background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
         
