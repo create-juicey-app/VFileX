@@ -114,6 +114,9 @@ jobs:
           $runtimes = Get-ChildItem $artifactDir -Filter "*runtime*.dll"
           if ($runtimes.Count -eq 0) { Write-Host "WARNING: No compiler runtime DLLs found. The app might require VC++ Redist on user machine." }
 
+          # remove bundled Visual C++ redistributable installer if present
+          Remove-Item "$artifactDir\vc_redist.x64.exe" -ErrorAction Ignore
+
           # package as a simple zip; keep CI clean and avoid extra dependencies
           Write-Host "Packaging ZIP archive"
           Compress-Archive -Path "$artifactDir\*" -DestinationPath "VFileX-windows.zip" -Force
