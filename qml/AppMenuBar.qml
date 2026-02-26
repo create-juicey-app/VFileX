@@ -60,12 +60,17 @@ MenuBar {
     
     delegate: MenuBarItem {
         id: menuBarItem
-        contentItem: Text {
-            text: menuBarItem.text.replace("&", "")
-            font: menuBarItem.font
-            color: textColor
-            horizontalAlignment: Text.AlignLeft
-            verticalAlignment: Text.AlignVCenter
+        contentItem: RowLayout {
+            anchors.fill: parent
+            anchors.margins: 6
+            spacing: 8
+            Text {
+                text: menuBarItem.text.replace("&", "")
+                font: menuBarItem.font
+                color: textColor
+                verticalAlignment: Text.AlignVCenter
+                Layout.fillWidth: true
+            }
         }
         background: Rectangle {
             anchors.fill: parent
