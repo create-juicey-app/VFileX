@@ -60,20 +60,21 @@ MenuBar {
     
     delegate: MenuBarItem {
         id: menuBarItem
-        contentItem: RowLayout {
-            anchors.fill: parent
-            anchors.margins: 6
-            spacing: 8
-            Text {
-                text: menuBarItem.text.replace("&", "")
-                font: menuBarItem.font
-                color: textColor
-                verticalAlignment: Text.AlignVCenter
-                Layout.fillWidth: true
-            }
+        
+        padding: 6
+        leftPadding: 12
+        rightPadding: 12
+        
+        contentItem: Text {
+            text: menuBarItem.text.replace("&", "")
+            font: menuBarItem.font
+            color: textColor
+            verticalAlignment: Text.AlignVCenter
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideRight
         }
+        
         background: Rectangle {
-            anchors.fill: parent
             color: menuBarItem.highlighted ? accent : (menuBarItem.hovered ? buttonHover : "transparent")
             Behavior on color { ColorAnimation { duration: animDurationFast } }
         }
@@ -108,7 +109,7 @@ MenuBar {
                     visible: text !== ""
                 }
             }
-            background: Rectangle { anchors.fill: parent; color: fileMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+            background: Rectangle { color: fileMenuItem.highlighted ? accent : "transparent"; radius: 4 }
         }
         background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
         
@@ -231,8 +232,6 @@ MenuBar {
     
     Menu {
         title: "&Settings"
-        
-        property string selectedGame: ""
         
         delegate: MenuItem {
             id: settingsMenuItem
