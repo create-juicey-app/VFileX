@@ -62,7 +62,11 @@ jobs:
           
           mkdir -p artifact
           cp target/release/VFileX artifact/
-          cp -r qml media resources.qrc artifact/ || true
+          # QML is embedded via `build.rs` / CXX-Qt qml_module; only include qml if explicitly requested
+          if [ "$INCLUDE_QML" = "true" ]; then
+            cp -r qml artifact/ || true
+          fi
+          cp -r media resources.qrc artifact/ || true
 
           # Safe to UPX binary on Linux
           upx --best --lzma artifact/VFileX || echo "UPX skipped"
@@ -91,12 +95,14 @@ jobs:
             throw "Executable not found at $exeSource"
           }
           Copy-Item $exeSource -Destination $artifactDir
-          if (Test-Path "qml") { Copy-Item "qml" -Destination $artifactDir -Recurse }
+          # why
+          if ($env:INCLUDE_QML -eq 'true') { if (Test-Path "qml") { Copy-Item "qml" -Destination $artifactDir -Recurse } }
           if (Test-Path "media") { Copy-Item "media" -Destination $artifactDir -Recurse }
 
           # deploy Qt runtime files
           Write-Host "Running windeployqt..."
-          windeployqt --dir $artifactDir --qmldir qml --compiler-runtime --no-translations --no-opengl-sw --release "$artifactDir\VFileX.exe"
+          # Do NOT bundle the Visual C++ redistributable here; expect target machines to have VC++ Redistributable installed.
+          windeployqt --dir $artifactDir --qmldir qml --no-translations --no-opengl-sw --release "$artifactDir\VFileX.exe"
 
           # remove unneeded cruft
           Remove-Item "$artifactDir\opengl32sw.dll" -ErrorAction Ignore
