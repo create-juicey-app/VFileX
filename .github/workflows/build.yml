@@ -75,64 +75,62 @@ jobs:
           chmod +x VFileX-launcher.sh
           mv VFileX-launcher.sh VFileX-linux
 
-      # --- PACKAGE WINDOWS (FIXED) ---
+      # --- PACKAGE WINDOWS ---
       - name: Package (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          # 1. Install 7-Zip (No UPX)
-          choco install 7zip -y
-          
-          # 2. Prepare Directory
+          # start fresh each run
           $artifactDir = "artifact"
+          if (Test-Path $artifactDir) { Remove-Item -Recurse -Force $artifactDir }
           New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
-          
+
+          # copy executable and supporting files
           $exeSource = "target\release\VFileX.exe"
-          if (-not (Test-Path $exeSource)) { throw "Executable not found at $exeSource" }
+          if (-not (Test-Path $exeSource)) {
+            throw "Executable not found at $exeSource"
+          }
           Copy-Item $exeSource -Destination $artifactDir
-          
-          # 3. Copy QML/Resources
           if (Test-Path "qml") { Copy-Item "qml" -Destination $artifactDir -Recurse }
           if (Test-Path "media") { Copy-Item "media" -Destination $artifactDir -Recurse }
 
-          # 4. Run Windeployqt (SAFE MODE)
-          # REMOVED: --no-compiler-runtime (We WANT the runtime now)
-          # ADDED: --compiler-runtime (Bundles vcruntime140.dll, etc.)
+          # deploy Qt runtime files
           Write-Host "Running windeployqt..."
           windeployqt --dir $artifactDir --qmldir qml --compiler-runtime --no-translations --no-opengl-sw --release "$artifactDir\VFileX.exe"
 
-          # 5. Clean up bloat (but keep the important stuff)
-          if (Test-Path "$artifactDir\opengl32sw.dll") { Remove-Item "$artifactDir\opengl32sw.dll" }
-          Get-ChildItem $artifactDir -Filter *.pdb -Recurse | Remove-Item
+          # remove unneeded cruft
+          Remove-Item "$artifactDir\opengl32sw.dll" -ErrorAction Ignore
+          Get-ChildItem $artifactDir -Filter *.pdb -Recurse | Remove-Item -Force -ErrorAction Ignore
 
-          # 6. Verify Critical DLLs
+          # sanity checks
           if (-not (Test-Path "$artifactDir\Qt6Core.dll")) { throw "Qt6Core.dll missing!" }
           if (-not (Test-Path "$artifactDir\platforms\qwindows.dll")) { throw "qwindows.dll missing!" }
-          
-          # Verify Runtime (prevent 0xc0000142 on fresh Windows installs)
-          # Note: Names vary slightly by version, but usually vcruntime140.dll is the key one.
           $runtimes = Get-ChildItem $artifactDir -Filter "*runtime*.dll"
           if ($runtimes.Count -eq 0) { Write-Host "WARNING: No compiler runtime DLLs found. The app might require VC++ Redist on user machine." }
 
-          # 7. Create SFX with 7-Zip (NO UPX COMPRESSION STEPS)
-          Write-Host "Creating SFX..."
-          $7zPath = "C:\Program Files\7-Zip\7z.exe"
-          $sfxModule = "C:\Program Files\7-Zip\7z.sfx"
-          
-          # High compression 7z archive
-          & $7zPath a -t7z -m0=lzma2 -mx=9 -mfb=273 -ms=on "payload.7z" ".\$artifactDir\*"
+          # package as a simple zip; keep CI clean and avoid extra dependencies
+          Write-Host "Packaging ZIP archive"
+          Compress-Archive -Path "$artifactDir\*" -DestinationPath "VFileX-windows.zip" -Force
 
-          $configLines = @(
-            ';!@Install@!UTF-8!',
-            'Title="VFileX"',
-            'GUIMode="2"',            
-            'OverwriteMode="0"',
-            'RunProgram="VFileX.exe"',
-            ';!@InstallEnd@!'
-          )
-          $configLines -join "`r`n" | Set-Content -Path config.txt -NoNewline
-
-          cmd /c "copy /b `"$sfxModule`" + config.txt + payload.7z VFileX-portable.exe"
+      - name: Clean build artifacts
+        if: matrix.os == 'windows-latest'
+        run: |
+          # remove build state so matrix runs stay lean
+          cargo clean
+      - name: Remove MSI installers & runner temp (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          Write-Host "Removing MSI files and cleaning runner temp locations"
+          $paths = @($env:TEMP, $env:RUNNER_TEMP, $env:RUNNER_TOOL_CACHE, "$env:USERPROFILE\Downloads", "$PWD")
+          foreach ($p in $paths) {
+            if (Test-Path $p) {
+              Get-ChildItem -Path $p -Filter *.msi -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+            }
+          }
+          # Also remove any MSI files left in the repository/workspace
+          Get-ChildItem -Path . -Include *.msi -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+          Write-Host "MSI cleanup done."
       # --- UPLOADS ---
       - name: Upload artifact (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -145,5 +143,5 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: VFileX-windows-portable
-          path: VFileX-portable.exe
+          name: VFileX-windows
+          path: VFileX-windows.zip
