@@ -232,10 +232,11 @@ MenuBar {
     
     Menu {
         title: "&Settings"
-        
+        implicitWidth: 50
         delegate: MenuItem {
             id: settingsMenuItem
-            implicitWidth: contentItem.implicitWidth
+            implicitWidth: 50
+
             contentItem: RowLayout {
                 spacing: 8
                 ThemedIcon {
