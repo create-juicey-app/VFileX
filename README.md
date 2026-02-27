@@ -6,30 +6,6 @@ Built with Rust + Qt (CXX-Qt/QML)
 
 ---
 
-## Features
-
-- Material Editing
-- Texture Preview
-(todo, make it more descriptive)
-
-### Supported Shaders
-- LightmappedGeneric
-- VertexLitGeneric
-- UnlitGeneric
-- WorldVertexTransition
-- Refract
-- Water
-- Sprite
-- Cable
-- SpriteCard
-- DecalModulate
-- Eyes
-- Teeth
-- LightmappedReflective
-- Modulate
-- MonitorScreen
----
-
 ## Building from Source
 
 ### Prerequisites
@@ -48,6 +24,8 @@ sudo apt install qt6-base-dev qt6-declarative-dev cmake ninja-build
 ```bash
 sudo dnf install qt6-qtbase-devel qt6-qtdeclarative-devel cmake ninja-build
 ```
+#### Linux (Arch)
+guess lol
 
 #### Windows
 1. Install [Qt 6](https://www.qt.io/download) with MSVC components
