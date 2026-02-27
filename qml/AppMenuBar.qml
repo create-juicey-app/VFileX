@@ -61,6 +61,9 @@ MenuBar {
     delegate: MenuBarItem {
         id: menuBarItem
         
+        implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
+        implicitHeight: contentItem.implicitHeight + topPadding + bottomPadding
+
         padding: 6
         leftPadding: 12
         rightPadding: 12
@@ -85,7 +88,10 @@ MenuBar {
         
         delegate: MenuItem {
             id: fileMenuItem
-            implicitWidth: contentItem.implicitWidth
+            implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
+            padding: 6
+            leftPadding: 10
+            rightPadding: 10
             contentItem: RowLayout {
                 spacing: 8
                 ThemedIcon {
@@ -120,7 +126,10 @@ MenuBar {
             title: "Open Specific"
             delegate: MenuItem {
                 id: openSpecificMenuItem
-                implicitWidth: contentItem.implicitWidth
+                implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
+                padding: 6
+                leftPadding: 10
+                rightPadding: 10
                 contentItem: RowLayout {
                     spacing: 8
                     ThemedIcon {
@@ -138,7 +147,7 @@ MenuBar {
                         Layout.fillWidth: true
                     }
                 }
-                background: Rectangle { anchors.fill: parent; color: openSpecificMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+                background: Rectangle { color: openSpecificMenuItem.highlighted ? accent : "transparent"; radius: 4 }
             }
             background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
             
@@ -157,7 +166,10 @@ MenuBar {
         title: "&View"
         delegate: MenuItem {
             id: viewMenuItem
-            implicitWidth: contentItem.implicitWidth
+            implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
+            padding: 6
+            leftPadding: 10
+            rightPadding: 10
             contentItem: RowLayout {
                 spacing: 8
                 ThemedIcon {
@@ -181,7 +193,7 @@ MenuBar {
                     visible: text !== ""
                 }
             }
-            background: Rectangle { anchors.fill: parent; color: viewMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+            background: Rectangle { color: viewMenuItem.highlighted ? accent : "transparent"; radius: 4 }
         }
         background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
         
@@ -197,7 +209,10 @@ MenuBar {
         title: "&Tools"
         delegate: MenuItem {
             id: toolsMenuItem
-            implicitWidth: contentItem.implicitWidth
+            implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
+            padding: 6
+            leftPadding: 10
+            rightPadding: 10
             contentItem: RowLayout {
                 spacing: 8
                 ThemedIcon {
@@ -221,7 +236,7 @@ MenuBar {
                     visible: text !== ""
                 }
             }
-            background: Rectangle { anchors.fill: parent; color: toolsMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+            background: Rectangle { color: toolsMenuItem.highlighted ? accent : "transparent"; radius: 4 }
         }
         background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
         
@@ -232,10 +247,12 @@ MenuBar {
     
     Menu {
         title: "&Settings"
-        implicitWidth: 50
         delegate: MenuItem {
             id: settingsMenuItem
-            implicitWidth: 50
+            implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
+            padding: 6
+            leftPadding: 10
+            rightPadding: 10
 
             contentItem: RowLayout {
                 spacing: 8
@@ -260,7 +277,7 @@ MenuBar {
                     visible: text !== ""
                 }
             }
-            background: Rectangle { anchors.fill: parent; color: settingsMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+            background: Rectangle { color: settingsMenuItem.highlighted ? accent : "transparent"; radius: 4 }
         }
         background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
         
@@ -274,7 +291,10 @@ MenuBar {
             
             delegate: MenuItem {
                 id: themeMenuItem
-                implicitWidth: contentItem.implicitWidth
+                implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
+                padding: 6
+                leftPadding: 10
+                rightPadding: 10
                 contentItem: RowLayout {
                     spacing: 8
                     ThemedIcon {
@@ -297,7 +317,7 @@ MenuBar {
                         font.pixelSize: 12
                     }
                 }
-                background: Rectangle { anchors.fill: parent; color: themeMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+                background: Rectangle { color: themeMenuItem.highlighted ? accent : "transparent"; radius: 4 }
             }
             background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
             
@@ -331,7 +351,10 @@ MenuBar {
         title: "&Help"
         delegate: MenuItem {
             id: helpMenuItem
-            implicitWidth: contentItem.implicitWidth
+            implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
+            padding: 6
+            leftPadding: 10
+            rightPadding: 10
             contentItem: RowLayout {
                 spacing: 8
                 ThemedIcon {
@@ -355,7 +378,7 @@ MenuBar {
                     visible: text !== ""
                 }
             }
-            background: Rectangle { anchors.fill: parent; color: helpMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+            background: Rectangle { color: helpMenuItem.highlighted ? accent : "transparent"; radius: 4 }
         }
         background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
         

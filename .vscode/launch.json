@@ -1,0 +1,29 @@
+        {
+            "version": "0.2.0",
+            "configurations": [
+                
+                
+                {
+                    "type": "lldb",
+                    "request": "launch",
+                    "name": "Debug Rust QT App",
+                    "cargo": {
+                        "args": ["build", "--bin", "VFileX", "--package", "VFileX"],
+                        "filter": {
+                            "name": "VFileX",
+                            "kind": "bin"
+                        }
+                    },
+                    "args": [],
+                    "cwd": "${workspaceFolder}",
+                    "program": "${workspaceFolder}/target/debug/VFileX",
+                    "env": {
+                        // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                        "QML_DEBUG": "1",
+                        "QT_LOGGING_RULES": "qt.qml.debug=true"
+                    },
+                    "preLaunchTask": "cargo build --debug"
+                }
+            ]
+        }
+        
