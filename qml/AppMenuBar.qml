@@ -215,7 +215,11 @@ MenuBar {
     
     Menu {
         title: "&Tools"
+        
+        Layout.fillWidth: true
+
         delegate: MenuItem {
+            width: 200
             id: toolsMenuItem
             padding: 6
             leftPadding: 10
