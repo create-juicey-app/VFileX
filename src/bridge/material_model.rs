@@ -53,7 +53,7 @@ pub mod qobject {
         pub has_value: bool,
     }
 
-    unsafe extern "RustQt" {
+    extern "RustQt" {
         #[qobject]
         #[qml_element]
         #[qproperty(QString, shader_name)]
@@ -65,7 +65,7 @@ pub mod qobject {
         type MaterialModel = super::MaterialModelRust;
     }
 
-    unsafe extern "RustQt" {
+    extern "RustQt" {
         // Get all available shader names
         #[qinvokable]
         fn get_shader_names(self: &MaterialModel) -> QStringList;
@@ -160,7 +160,7 @@ pub mod qobject {
     }
 
     // Signals
-    unsafe extern "RustQt" {
+    extern "RustQt" {
         // Emitted when a parameter value changes
         #[qsignal]
         fn parameter_changed(self: Pin<&mut MaterialModel>, name: QString);

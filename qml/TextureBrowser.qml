@@ -74,50 +74,99 @@ Popup {
     property var categories: ["all", "custom", "brick", "concrete", "metal", "wood", "glass", "nature", "decals", "models", "effects", "other"]
     property bool isLoading: false
     
+    // Chunked loading properties
+    property var _rawVpkList: []
+    property var _rawCustomList: []
+    property var _addedPaths: ({})
+    property int _loadStep: 0 // 0: init, 1: vpk, 2: custom, 3: finish
+    property int _loadIndex: 0
+    property int _totalCount: 0
+    
     onOpened: {
-        loadTextures()
+        isLoading = true
+        allTextures = []
+        filteredTextures = []
+        textureGrid.model = []
+        _loadStep = 0
+        _loadIndex = 0
+        _addedPaths = {}
+        initLoadTimer.start()
         searchField.forceActiveFocus()
     }
     
-    function loadTextures() {
-        isLoading = true
-        // Get ALL textures from VPK (no limit)
-        var vpkTextures = app.get_texture_completions("", -1)
-        allTextures = []
-        
-        // Track paths we've already added to avoid duplicates
-        var addedPaths = {}
-        
-        for (var i = 0; i < vpkTextures.length; i++) {
-            var path = vpkTextures[i]
-            var category = categorizeTexture(path)
-            allTextures.push({
-                path: path,
-                category: category,
-                isCustom: false
-            })
-            addedPaths[path.toLowerCase()] = true
+    // Timer to allow the 'Loading' overlay to render before heavy lifting starts
+    Timer {
+        id: initLoadTimer
+        interval: 50
+        repeat: false
+        onTriggered: {
+            _rawVpkList = app.get_texture_completions("", -1)
+            _rawCustomList = app.get_custom_textures(-1)
+            _totalCount = _rawVpkList.length + _rawCustomList.length
+            _loadStep = 1
+            chunkLoadTimer.start()
         }
-        
-        // Get ALL custom textures from disk (no limit)
-        var customTextures = app.get_custom_textures(-1)
-        for (var j = 0; j < customTextures.length; j++) {
-            var customPath = customTextures[j]
-            // Skip if already added from VPK
-            if (addedPaths[customPath.toLowerCase()]) {
-                continue
+    }
+    
+    Timer {
+        id: chunkLoadTimer
+        interval: 1
+        repeat: true
+        onTriggered: {
+            var chunkSize = 300
+            var count = 0
+            
+            if (_loadStep === 1) {
+                // Processing VPK textures
+                while (count < chunkSize && _loadIndex < _rawVpkList.length) {
+                    var path = _rawVpkList[_loadIndex]
+                    var category = categorizeTexture(path)
+                    allTextures.push({
+                        path: path,
+                        category: category,
+                        isCustom: false
+                    })
+                    _addedPaths[path.toLowerCase()] = true
+                    _loadIndex++
+                    count++
+                }
+                
+                if (_loadIndex >= _rawVpkList.length) {
+                    _loadStep = 2
+                    _loadIndex = 0
+                }
+            } else if (_loadStep === 2) {
+                // Processing Custom textures
+                while (count < chunkSize && _loadIndex < _rawCustomList.length) {
+                    var customPath = _rawCustomList[_loadIndex]
+                    if (!_addedPaths[customPath.toLowerCase()]) {
+                        var customCategory = categorizeTexture(customPath)
+                        allTextures.push({
+                            path: customPath,
+                            category: customCategory,
+                            isCustom: true
+                        })
+                        _addedPaths[customPath.toLowerCase()] = true
+                    }
+                    _loadIndex++
+                    count++
+                }
+                
+                if (_loadIndex >= _rawCustomList.length) {
+                    _loadStep = 3
+                }
             }
-            var customCategory = categorizeTexture(customPath)
-            allTextures.push({
-                path: customPath,
-                category: customCategory,
-                isCustom: true
-            })
-            addedPaths[customPath.toLowerCase()] = true
+            
+            if (_loadStep === 3) {
+                stop()
+                isLoading = false
+                filterTextures()
+            }
         }
-        
-        isLoading = false
-        filterTextures()
+    }
+    
+    function loadTextures() {
+        // Now handled by timers
     }
     
     function categorizeTexture(path) {
@@ -691,54 +740,57 @@ Popup {
                 anchors.fill: parent
                 color: Qt.rgba(0, 0, 0, 0.7)
                 visible: textureBrowser.isLoading
-                opacity: textureBrowser.isLoading ? 1.0 : 0.0
+                radius: 8
                 
-                Behavior on opacity { NumberAnimation { duration: themeRoot.animDurationNormal } }
-                
-                Column {
+                ColumnLayout {
                     anchors.centerIn: parent
-                    spacing: 16
+                    spacing: 20
                     
-                    // Animated loading spinner
-                    Canvas {
-                        id: loadingSpinner
-                        width: 48
-                        height: 48
-                        anchors.horizontalCenter: parent.horizontalCenter
+                    Rectangle {
+                        Layout.alignment: Qt.AlignHCenter
+                        width: 60; height: 60
+                        color: "transparent"
                         
-                        property real angle: 0
-                        
-                        NumberAnimation on angle {
-                            from: 0
-                            to: 360
-                            duration: 1000
-                            loops: Animation.Infinite
-                            running: textureBrowser.isLoading
-                        }
-                        
-                        onAngleChanged: requestPaint()
-                        
-                        onPaint: {
-                            var ctx = getContext("2d")
-                            ctx.reset()
-                            ctx.strokeStyle = themeRoot.accent
-                            ctx.lineWidth = 4
-                            ctx.lineCap = "round"
-                            ctx.beginPath()
-                            var startAngle = (angle - 90) * Math.PI / 180
-                            var endAngle = (angle + 180) * Math.PI / 180
-                            ctx.arc(width/2, height/2, 18, startAngle, endAngle)
-                            ctx.stroke()
+                        ThemedIcon {
+                            anchors.fill: parent
+                            source: "qrc:/media/refresh.svg"
+                            sourceSize: Qt.size(60, 60)
+                            themeRoot: textureBrowser.themeRoot
+                            
+                            RotationAnimation on rotation {
+                                from: 0; to: 360
+                                duration: 1000
+                                loops: Animation.Infinite
+                                running: textureBrowser.isLoading
+                            }
                         }
                     }
                     
-                    Text {
-                        text: "Loading textures..."
-                        color: themeRoot.textColor
-                        font.pixelSize: 14
-                        anchors.horizontalCenter: parent.horizontalCenter
+                    ColumnLayout {
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: 4
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: "Indexing Textures..."
+                            color: "white"
+                            font.pixelSize: 16
+                            font.bold: true
+                        }
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: {
+                                if (textureBrowser._totalCount === 0) return "Scanning..."
+                                var current = (textureBrowser._loadStep === 1) ? textureBrowser._loadIndex : (textureBrowser._rawVpkList.length + textureBrowser._loadIndex)
+                                return current + " / " + textureBrowser._totalCount
+                            }
+                            color: Qt.rgba(1, 1, 1, 0.7)
+                            font.pixelSize: 13
+                        }
                     }
                 }
+                
+                // Block clicks while loading
+                MouseArea { anchors.fill: parent; preventStealing: true }
             }
         }
         

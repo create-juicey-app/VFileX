@@ -61,9 +61,6 @@ MenuBar {
     delegate: MenuBarItem {
         id: menuBarItem
         
-        implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
-        implicitHeight: contentItem.implicitHeight + topPadding + bottomPadding
-
         padding: 6
         leftPadding: 12
         rightPadding: 12
@@ -78,6 +75,8 @@ MenuBar {
         }
         
         background: Rectangle {
+            implicitWidth: Math.max(40, menuBarItem.contentItem.implicitWidth + menuBarItem.leftPadding + menuBarItem.rightPadding)
+            implicitHeight: 30
             color: menuBarItem.highlighted ? accent : (menuBarItem.hovered ? buttonHover : "transparent")
             Behavior on color { ColorAnimation { duration: animDurationFast } }
         }
@@ -88,7 +87,6 @@ MenuBar {
         
         delegate: MenuItem {
             id: fileMenuItem
-            implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
             padding: 6
             leftPadding: 10
             rightPadding: 10
@@ -115,7 +113,11 @@ MenuBar {
                     visible: text !== ""
                 }
             }
-            background: Rectangle { color: fileMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+            background: Rectangle { 
+                implicitWidth: Math.max(150, fileMenuItem.contentItem.implicitWidth + fileMenuItem.leftPadding + fileMenuItem.rightPadding)
+                implicitHeight: 32
+                color: fileMenuItem.highlighted ? accent : "transparent"; radius: 4 
+            }
         }
         background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
         
@@ -126,7 +128,6 @@ MenuBar {
             title: "Open Specific"
             delegate: MenuItem {
                 id: openSpecificMenuItem
-                implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
                 padding: 6
                 leftPadding: 10
                 rightPadding: 10
@@ -147,7 +148,11 @@ MenuBar {
                         Layout.fillWidth: true
                     }
                 }
-                background: Rectangle { color: openSpecificMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+                background: Rectangle { 
+                    implicitWidth: Math.max(150, openSpecificMenuItem.contentItem.implicitWidth + openSpecificMenuItem.leftPadding + openSpecificMenuItem.rightPadding)
+                    implicitHeight: 32
+                    color: openSpecificMenuItem.highlighted ? accent : "transparent"; radius: 4 
+                }
             }
             background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
             
@@ -166,7 +171,6 @@ MenuBar {
         title: "&View"
         delegate: MenuItem {
             id: viewMenuItem
-            implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
             padding: 6
             leftPadding: 10
             rightPadding: 10
@@ -193,7 +197,11 @@ MenuBar {
                     visible: text !== ""
                 }
             }
-            background: Rectangle { color: viewMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+            background: Rectangle { 
+                implicitWidth: Math.max(150, viewMenuItem.contentItem.implicitWidth + viewMenuItem.leftPadding + viewMenuItem.rightPadding)
+                implicitHeight: 32
+                color: viewMenuItem.highlighted ? accent : "transparent"; radius: 4 
+            }
         }
         background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
         
@@ -209,7 +217,6 @@ MenuBar {
         title: "&Tools"
         delegate: MenuItem {
             id: toolsMenuItem
-            implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
             padding: 6
             leftPadding: 10
             rightPadding: 10
@@ -236,7 +243,11 @@ MenuBar {
                     visible: text !== ""
                 }
             }
-            background: Rectangle { color: toolsMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+            background: Rectangle { 
+                implicitWidth: Math.max(150, toolsMenuItem.contentItem.implicitWidth + toolsMenuItem.leftPadding + toolsMenuItem.rightPadding)
+                implicitHeight: 32
+                color: toolsMenuItem.highlighted ? accent : "transparent"; radius: 4 
+            }
         }
         background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
         
@@ -249,7 +260,6 @@ MenuBar {
         title: "&Settings"
         delegate: MenuItem {
             id: settingsMenuItem
-            implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
             padding: 6
             leftPadding: 10
             rightPadding: 10
@@ -277,7 +287,11 @@ MenuBar {
                     visible: text !== ""
                 }
             }
-            background: Rectangle { color: settingsMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+            background: Rectangle { 
+                implicitWidth: Math.max(150, settingsMenuItem.contentItem.implicitWidth + settingsMenuItem.leftPadding + settingsMenuItem.rightPadding)
+                implicitHeight: 32
+                color: settingsMenuItem.highlighted ? accent : "transparent"; radius: 4 
+            }
         }
         background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
         
@@ -291,7 +305,6 @@ MenuBar {
             
             delegate: MenuItem {
                 id: themeMenuItem
-                implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
                 padding: 6
                 leftPadding: 10
                 rightPadding: 10
@@ -317,7 +330,11 @@ MenuBar {
                         font.pixelSize: 12
                     }
                 }
-                background: Rectangle { color: themeMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+                background: Rectangle { 
+                    implicitWidth: Math.max(150, themeMenuItem.contentItem.implicitWidth + themeMenuItem.leftPadding + themeMenuItem.rightPadding)
+                    implicitHeight: 32
+                    color: themeMenuItem.highlighted ? accent : "transparent"; radius: 4 
+                }
             }
             background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
             
@@ -351,7 +368,6 @@ MenuBar {
         title: "&Help"
         delegate: MenuItem {
             id: helpMenuItem
-            implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
             padding: 6
             leftPadding: 10
             rightPadding: 10
@@ -378,7 +394,11 @@ MenuBar {
                     visible: text !== ""
                 }
             }
-            background: Rectangle { color: helpMenuItem.highlighted ? accent : "transparent"; radius: 4 }
+            background: Rectangle { 
+                implicitWidth: Math.max(150, helpMenuItem.contentItem.implicitWidth + helpMenuItem.leftPadding + helpMenuItem.rightPadding)
+                implicitHeight: 32
+                color: helpMenuItem.highlighted ? accent : "transparent"; radius: 4 
+            }
         }
         background: Rectangle { color: panelBg; border.color: panelBorder; radius: 6 }
         

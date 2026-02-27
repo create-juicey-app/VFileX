@@ -5,41 +5,37 @@
 use cxx_qt_build::{CxxQtBuilder, QmlModule};
 
 fn main() {
-    CxxQtBuilder::new()
-        // register QML module
-        .qml_module(QmlModule {
-            uri: "com.VFileX",
-            rust_files: &[
-                "src/bridge/material_model.rs",
-                "src/bridge/image_provider.rs",
-                "src/bridge/application.rs",
-            ],
-            qml_files: &[
-                "qml/ThemeColors.js",
-                "qml/Main.qml",
-                "qml/AppMenuBar.qml",
-                "qml/ParameterItemDelegate.qml",
-                "qml/PreviewPane.qml",
-                "qml/ThemedIcon.qml",
-                "qml/NewMaterialDialog.qml",
-                "qml/AddParameterDialog.qml",
-                "qml/AboutDialog.qml",
-                "qml/ColorPickerDialog.qml",
-                "qml/WelcomeDialog.qml",
-                "qml/ImageToVtfDialog.qml",
-                "qml/TextureBrowser.qml",
-            ],
-            ..Default::default()
-        })
-        // Include custom C++ helpers
-        .cc_builder(|cc| {
+    let qml_module = QmlModule::new("com.VFileX")
+        .version(1, 0)
+        .qml_file("qml/Main.qml")
+        .qml_file("qml/AppMenuBar.qml")
+        .qml_file("qml/ParameterItemDelegate.qml")
+        .qml_file("qml/PreviewPane.qml")
+        .qml_file("qml/ThemedIcon.qml")
+        .qml_file("qml/NewMaterialDialog.qml")
+        .qml_file("qml/AddParameterDialog.qml")
+        .qml_file("qml/AboutDialog.qml")
+        .qml_file("qml/ColorPickerDialog.qml")
+        .qml_file("qml/WelcomeDialog.qml")
+        .qml_file("qml/ImageToVtfDialog.qml")
+        .qml_file("qml/TextureBrowser.qml");
+
+    let builder = CxxQtBuilder::new_qml_module(qml_module)
+        .file("src/bridge/material_model.rs")
+        .file("src/bridge/image_provider.rs")
+        .file("src/bridge/application.rs")
+        .qrc_resources(["qml/ThemeColors.js"]);
+
+    unsafe {
+        builder.cc_builder(|cc: &mut cc::Build| {
             cc.include(".");
         })
-        // CXX bridge for custom helpers
-        .file("src/bridge/qt_helpers.rs")
-        // Add icon as Qt resource
-        .qrc("resources.qrc")
-        // Link Qt Widgets for native dialogs (had a rough time with it)
-        .qt_module("Widgets")
-        .build();
+    }
+    // CXX bridge for custom helpers
+    .file("src/bridge/qt_helpers.rs")
+    // Add icon as Qt resource
+    .qrc("resources.qrc")
+    // Link Qt Widgets for native dialogs
+    .qt_module("Widgets")
+    .build();
 }

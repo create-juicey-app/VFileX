@@ -11,13 +11,6 @@ use std::sync::{Arc, Mutex};
 use crate::vpk_archive::VPK_MANAGER;
 use crate::vtf::{DecodedFrame, VtfDecoder, VtfImage};
 
-/// Logging helper for texture operations
-macro_rules! tex_log {
-    ($($arg:tt)*) => {
-        eprintln!("[Texture] {}", format!($($arg)*));
-    };
-}
-
 /// Convert a local file path to a proper file:// URL
 /// On Windows: C:\path\to\file -> file:///C:/path/to/file
 /// On Unix: /path/to/file -> file:///path/to/file
@@ -58,7 +51,7 @@ pub mod qobject {
         type QByteArray = cxx_qt_lib::QByteArray;
     }
 
-    unsafe extern "RustQt" {
+    extern "RustQt" {
         #[qobject]
         #[qml_element]
         #[qproperty(QString, current_texture)]
@@ -76,7 +69,7 @@ pub mod qobject {
         type TextureProvider = super::TextureProviderRust;
     }
 
-    unsafe extern "RustQt" {
+    extern "RustQt" {
         // Load a VTF texture from file path
         #[qinvokable]
         fn load_texture(self: Pin<&mut TextureProvider>, path: &QString) -> bool;
@@ -139,7 +132,7 @@ pub mod qobject {
     }
 
     // Signals
-    unsafe extern "RustQt" {
+    extern "RustQt" {
         // Emitted when a texture is loaded
         #[qsignal]
         fn texture_loaded(self: Pin<&mut TextureProvider>);

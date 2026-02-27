@@ -31,7 +31,7 @@ pub mod qobject {
         pub preview_background: QString,
     }
 
-    unsafe extern "RustQt" {
+    extern "RustQt" {
         #[qobject]
         #[qml_element]
         #[qproperty(QString, app_name)]
@@ -45,7 +45,7 @@ pub mod qobject {
         type VFileXApp = super::VFileXAppRust;
     }
 
-    unsafe extern "RustQt" {
+    extern "RustQt" {
         // Initialize the application
         #[qinvokable]
         fn initialize(self: Pin<&mut VFileXApp>);
@@ -223,7 +223,7 @@ pub mod qobject {
     }
 
     // Signals
-    unsafe extern "RustQt" {
+    extern "RustQt" {
         // Emitted when settings change
         #[qsignal]
         fn settings_changed(self: Pin<&mut VFileXApp>);
